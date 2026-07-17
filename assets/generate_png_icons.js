@@ -20,7 +20,7 @@ const foregroundSizes = {
   'mipmap-xxxhdpi': 432,
 };
 
-const srcSvgPath = '/assets/icon.svg';
+const srcSvgPath = './assets/icon.svg';
 
 async function generate() {
   try {
@@ -38,7 +38,7 @@ async function generate() {
 
     // Generate standard & round icons
     for (const [folder, size] of Object.entries(standardSizes)) {
-      const destDir = path.join('/android/app/src/main/res', folder);
+      const destDir = path.join('./android/app/src/main/res', folder);
       fs.mkdirSync(destDir, { recursive: true });
 
       // standard ic_launcher
@@ -58,7 +58,7 @@ async function generate() {
 
     // Generate adaptive foreground icons
     for (const [folder, size] of Object.entries(foregroundSizes)) {
-      const destDir = path.join('/android/app/src/main/res', folder);
+      const destDir = path.join('./android/app/src/main/res', folder);
       fs.mkdirSync(destDir, { recursive: true });
 
       // foreground ic_launcher_foreground

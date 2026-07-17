@@ -262,7 +262,7 @@ export default function CalculatorTab({
               className="flex flex-col h-full justify-between max-w-md mx-auto p-4 space-y-4"
             >
               {/* Display Panel */}
-              <div className="bg-[#0f5132] text-white p-5 rounded-2xl shadow-md border border-[#0c4027] flex flex-col justify-end items-end min-h-[110px] w-full text-right relative overflow-hidden">
+              <div className="bg-[#0f5132] text-white p-6 rounded-2xl shadow-md border border-[#0c4027] flex flex-col justify-end items-end min-h-[135px] w-full text-right relative overflow-hidden">
                 {/* Background design elements */}
                 <div className="absolute top-0 left-0 w-32 h-32 bg-white/5 rounded-full -translate-x-12 -translate-y-12 pointer-events-none" />
                 <span className="absolute top-3 left-4 text-[9px] uppercase tracking-widest text-emerald-300 font-bold flex items-center gap-1">
@@ -270,12 +270,12 @@ export default function CalculatorTab({
                 </span>
                 
                 {/* Expression */}
-                <div className="text-emerald-200/90 font-mono text-sm tracking-wide max-w-full overflow-x-auto whitespace-nowrap scrollbar-none pt-4">
+                <div className="text-emerald-200/90 font-mono text-base tracking-wide max-w-full overflow-x-auto whitespace-nowrap scrollbar-none pt-4">
                   {expression || '0'}
                 </div>
                 
                 {/* Live Output */}
-                <div className="text-3xl font-extrabold font-sans mt-1 tracking-tight truncate max-w-full">
+                <div className="text-4xl font-extrabold font-sans mt-1.5 tracking-tight truncate max-w-full">
                   {result || evaluateExpression(expression) || '0'}
                 </div>
               </div>
