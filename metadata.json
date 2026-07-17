@@ -1,0 +1,6 @@
+{
+  "name": "BIne",
+  "description": "A resilient offline-first digital ledger and cashier terminal custom-built for Zambian merchants, enabling seamless sales, inventory tracking, debt (Nkongole) management, and live sales history.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

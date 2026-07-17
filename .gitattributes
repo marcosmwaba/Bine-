@@ -1,0 +1,12 @@
+# Ensure binary files are not modified by Git's line ending normalization
+*.jar binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+android/gradlew text eol=lf
+android/gradlew.bat text eol=crlf
+*.properties text eol=lf
+*.gradle text eol=lf
