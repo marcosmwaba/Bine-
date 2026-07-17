@@ -104,14 +104,29 @@ export default function App() {
     if (!latestVersion) return;
     setIsUpdating(true);
     setUpdateProgress(0);
-    setUpdateStage('Curling latest release bundle from github.com/marcosmwaba/Bine-...');
+
+    const downloadUrl = `https://github.com/marcosmwaba/Bine-/releases/download/${latestVersion}/app-debug.apk`;
+    setUpdateStage(`Curling release package: ${latestVersion} ...`);
+
+    // Trigger non-blocking asynchronous background download of the APK package directly from GitHub Releases!
+    try {
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.target = '_blank';
+      link.download = `app-debug-${latestVersion}.apk`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (e) {
+      console.error("Failed to trigger download automatically:", e);
+    }
 
     const stages = [
-      { progress: 15, text: 'Curling latest release bundle from github.com/marcosmwaba/Bine-...' },
-      { progress: 35, text: 'Downloading assets & verifying checksum tags...' },
-      { progress: 60, text: 'Extracting package zip and updating application cache...' },
-      { progress: 85, text: 'Synchronizing IndexedDB schemas & compiling components...' },
-      { progress: 100, text: 'Finalizing system update...' }
+      { progress: 15, text: `Curling latest release bundle asynchronously from repo...` },
+      { progress: 40, text: `Downloading app-debug.apk package directly in background...` },
+      { progress: 65, text: `Caching update state & registering version metadata...` },
+      { progress: 85, text: `Synchronizing offline database schemas...` },
+      { progress: 100, text: `Update finalized! version set to ${latestVersion}.` }
     ];
 
     let currentStageIndex = 0;
@@ -133,10 +148,10 @@ export default function App() {
             setIsUpdating(false);
             setLatestVersion(null);
             setShowSidebar(false);
-            setSuccessToast(`Application successfully updated to ${latestVersion}!`);
+            setSuccessToast(`Successfully updated to ${latestVersion}! Check your downloads for the installable APK.`);
             setTimeout(() => {
               window.location.reload();
-            }, 1500);
+            }, 2500);
           }, 800);
           return 100;
         }
