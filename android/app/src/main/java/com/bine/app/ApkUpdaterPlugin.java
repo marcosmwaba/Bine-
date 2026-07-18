@@ -23,20 +23,23 @@ import java.net.URL;
 public class ApkUpdaterPlugin extends Plugin {
 
     @PluginMethod
-    public void installApk(PluginCall call) {
-        String urlString = call.getString("url");
+    public void installApk(final PluginCall call) {
+        final String urlString = call.getString("url");
         if (urlString == null) {
             call.reject("URL is required");
             return;
         }
 
-        // Run download and install on a background thread
-        getBridge().executeOnExecutor(new Runnable() {
+        // Run download and install on a background thread — Bridge has no
+        // executeOnExecutor method (that belongs to AsyncTask, not Bridge),
+        // so we use a plain Thread instead. PluginCall.resolve/reject are
+        // safe to call from a background thread.
+        Thread thread = new Thread(new Runnable() {
             @Override
             public void run() {
                 try {
                     Context context = getContext();
-                    
+
                     URL url = new URL(urlString);
                     HttpURLConnection connection = (HttpURLConnection) url.openConnection();
                     connection.setConnectTimeout(15000);
@@ -62,7 +65,7 @@ public class ApkUpdaterPlugin extends Plugin {
                         apkFile.delete();
                     }
 
-                    InputStream input = new BufferedInputStream(url.openStream(), 8192);
+                    InputStream input = new BufferedInputStream(connection.getInputStream(), 8192);
                     FileOutputStream output = new FileOutputStream(apkFile);
 
                     byte[] data = new byte[4096];
@@ -98,5 +101,6 @@ public class ApkUpdaterPlugin extends Plugin {
                 }
             }
         });
+        thread.start();
     }
 }
