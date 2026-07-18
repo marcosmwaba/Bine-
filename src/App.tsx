@@ -42,12 +42,16 @@ import DebtTab from './components/DebtTab';
 import CalculatorTab from './components/CalculatorTab';
 import StatsTab from './components/StatsTab';
 import BineLogo from './components/BineLogo';
+import { SalesLedgerPanel, ExpensesLedgerPanel } from './components/LedgerPanels';
+import { Receipt } from 'lucide-react';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<string>('sales');
   const [showNotifications, setShowNotifications] = useState<boolean>(false);
   const [showSidebar, setShowSidebar] = useState<boolean>(false);
   const [showBusinessProfile, setShowBusinessProfile] = useState<boolean>(false);
+  const [showSalesLedger, setShowSalesLedger] = useState<boolean>(false);
+  const [showExpensesLedger, setShowExpensesLedger] = useState<boolean>(false);
   const [showAbout, setShowAbout] = useState<boolean>(false);
   const [successToast, setSuccessToast] = useState<string | null>(null);
   const [showClearConfirmation, setShowClearConfirmation] = useState<boolean>(false);
@@ -206,6 +210,7 @@ export default function App() {
                   clearCart={vm.clearCart}
                   getCartTotal={vm.getCartTotal}
                   processCheckout={vm.processCheckout}
+                  addExpense={vm.addExpense}
                   selectedCatalogCategory={vm.selectedCatalogCategory}
                   setSelectedCatalogCategory={vm.setSelectedCatalogCategory}
                   onNavigateToTab={setActiveTab}
@@ -292,6 +297,8 @@ export default function App() {
               >
                 <StatsTab 
                   sales={vm.sales}
+                  expenses={vm.expenses}
+                  deleteExpense={vm.deleteExpense}
                   getTotalNetProfit={vm.getTotalNetProfit}
                   getGrossSales={vm.getGrossSales}
                   getTotalTransactionsCount={vm.getTotalTransactionsCount}
@@ -512,6 +519,40 @@ export default function App() {
                         <Store className="w-5 h-5 stroke-[2] text-[#0f5132]" />
                         <span className="font-sans text-xs font-bold text-gray-800 group-hover:text-[#003820]">
                           Business Profile
+                        </span>
+                      </div>
+                      <ChevronRight className="w-4.5 h-4.5 text-gray-400 group-hover:text-[#0f5132] transition-colors" />
+                    </button>
+
+                    {/* Sales Transaction Ledger Button */}
+                    <button
+                      onClick={() => {
+                        setShowSidebar(false);
+                        setShowSalesLedger(true);
+                      }}
+                      className="w-full flex items-center justify-between px-3 py-3 rounded-xl hover:bg-gray-50 active:scale-98 transition-all text-left group cursor-pointer"
+                    >
+                      <div className="flex items-center gap-3 text-gray-700 group-hover:text-[#003820]">
+                        <FileText className="w-5 h-5 stroke-[2] text-[#0f5132]" />
+                        <span className="font-sans text-xs font-bold text-gray-800 group-hover:text-[#003820]">
+                          Sales Transaction Ledger
+                        </span>
+                      </div>
+                      <ChevronRight className="w-4.5 h-4.5 text-gray-400 group-hover:text-[#0f5132] transition-colors" />
+                    </button>
+
+                    {/* Business Expenses Ledger Button */}
+                    <button
+                      onClick={() => {
+                        setShowSidebar(false);
+                        setShowExpensesLedger(true);
+                      }}
+                      className="w-full flex items-center justify-between px-3 py-3 rounded-xl hover:bg-gray-50 active:scale-98 transition-all text-left group cursor-pointer"
+                    >
+                      <div className="flex items-center gap-3 text-gray-700 group-hover:text-[#003820]">
+                        <Receipt className="w-5 h-5 stroke-[2] text-[#0f5132]" />
+                        <span className="font-sans text-xs font-bold text-gray-800 group-hover:text-[#003820]">
+                          Business Expenses Ledger
                         </span>
                       </div>
                       <ChevronRight className="w-4.5 h-4.5 text-gray-400 group-hover:text-[#0f5132] transition-colors" />
@@ -1117,6 +1158,21 @@ export default function App() {
             );
           })}
         </nav>
+
+        {/* Ledger Panels */}
+        <SalesLedgerPanel
+          isOpen={showSalesLedger}
+          onClose={() => setShowSalesLedger(false)}
+          sales={vm.sales}
+          settings={vm.settings}
+        />
+
+        <ExpensesLedgerPanel
+          isOpen={showExpensesLedger}
+          onClose={() => setShowExpensesLedger(false)}
+          expenses={vm.expenses}
+          deleteExpense={vm.deleteExpense}
+        />
 
         {/* Android simulated bottom navigation bar pill handle (visible only on desktop mockup) */}
         <div className="hidden md:block absolute bottom-1 left-1/2 -translate-x-1/2 w-28 h-1 bg-gray-900 rounded-full z-50 opacity-40" />

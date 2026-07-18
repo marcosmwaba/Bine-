@@ -52,6 +52,14 @@ export interface Sale {
   debtorId?: string; // Optional if sold on debt
 }
 
+export interface Expense {
+  id: string;
+  amount: number;
+  description: string;
+  date: string; // e.g. '18 Jul 2026'
+  time: string; // e.g. '10:45 AM'
+}
+
 export interface Settings {
   businessName: string;
   mobileMoneyNumber: string;
@@ -65,7 +73,7 @@ export interface AppNotification {
   title: string;
   message: string;
   time: string;
-  type: 'sale' | 'repayment' | 'debtor' | 'restock' | 'info';
+  type: 'sale' | 'repayment' | 'debtor' | 'restock' | 'info' | 'expense';
   read: boolean;
 }
 

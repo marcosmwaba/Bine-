@@ -1,4 +1,4 @@
-import { Product, Debtor, Sale, Settings, AppNotification } from '../types';
+import { Product, Debtor, Sale, Settings, AppNotification, Expense } from '../types';
 
 const PRODUCTS_KEY = 'bine_pos_products';
 const DEBTORS_KEY = 'bine_pos_debtors';
@@ -94,5 +94,17 @@ export const repository = {
 
   saveNotifications(notifications: AppNotification[]): void {
     localStorage.setItem(NOTIFICATIONS_KEY, JSON.stringify(notifications));
+  },
+
+  getExpenses(): Expense[] {
+    const data = localStorage.getItem('bine_pos_expenses');
+    if (!data) {
+      return [];
+    }
+    return JSON.parse(data);
+  },
+
+  saveExpenses(expenses: Expense[]): void {
+    localStorage.setItem('bine_pos_expenses', JSON.stringify(expenses));
   }
 };

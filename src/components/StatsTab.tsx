@@ -4,6 +4,7 @@ import {
   Menu, 
   Bell, 
   TrendingUp, 
+  TrendingDown,
   DollarSign, 
   Receipt, 
   Search, 
@@ -15,7 +16,8 @@ import {
   Check, 
   X,
   PieChart as PieChartIcon,
-  BarChart2
+  BarChart2,
+  Trash2
 } from 'lucide-react';
 import { 
   ResponsiveContainer, 
@@ -29,10 +31,12 @@ import {
   Cell
 } from 'recharts';
 import BineLogo from './BineLogo';
-import { Sale } from '../types';
+import { Sale, Expense } from '../types';
 
 interface StatsTabProps {
   sales: Sale[];
+  expenses: Expense[];
+  deleteExpense: (id: string) => void;
   getTotalNetProfit: () => number;
   getGrossSales: () => number;
   getTotalTransactionsCount: () => number;
@@ -44,6 +48,8 @@ interface StatsTabProps {
 
 export default function StatsTab({
   sales,
+  expenses = [],
+  deleteExpense,
   getTotalNetProfit,
   getGrossSales,
   getTotalTransactionsCount,
@@ -59,6 +65,7 @@ export default function StatsTab({
   // Stats calculation
   const grossSalesVal = getGrossSales();
   const netProfitVal = getTotalNetProfit();
+  const totalExpensesVal = expenses.reduce((acc, e) => acc + e.amount, 0);
   const transactionCountVal = getTotalTransactionsCount();
 
   // Helper to format currency
@@ -156,13 +163,13 @@ export default function StatsTab({
           </div>
 
           {/* Quick Metrics Cards */}
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {/* Gross Sales */}
             <div className="bg-white rounded-2xl p-3.5 border border-gray-150 shadow-xs flex flex-col justify-between">
               <div className="text-gray-400 text-[10px] uppercase font-bold tracking-wider">Gross Sales</div>
               <div className="mt-2">
-                <span className="text-gray-400 font-mono text-[10px] mr-0.5">ZMW</span>
-                <span className="text-gray-800 text-base font-extrabold font-mono tracking-tight">
+                <span className="text-gray-400 font-mono text-[9px] mr-0.5">ZMW</span>
+                <span className="text-gray-800 text-sm md:text-base font-extrabold font-mono tracking-tight">
                   {grossSalesVal.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
                 </span>
               </div>
@@ -176,8 +183,8 @@ export default function StatsTab({
               <div className="absolute -right-6 -bottom-6 w-16 h-16 bg-white/5 rounded-full pointer-events-none" />
               <div className="text-emerald-200 text-[10px] uppercase font-bold tracking-wider">Net Profit</div>
               <div className="mt-2">
-                <span className="text-emerald-300 font-mono text-[10px] mr-0.5">ZMW</span>
-                <span className="text-white text-base font-extrabold font-mono tracking-tight">
+                <span className="text-emerald-300 font-mono text-[9px] mr-0.5">ZMW</span>
+                <span className="text-white text-sm md:text-base font-extrabold font-mono tracking-tight">
                   {netProfitVal.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
                 </span>
               </div>
@@ -186,11 +193,25 @@ export default function StatsTab({
               </div>
             </div>
 
+            {/* Total Expenses */}
+            <div className="bg-white rounded-2xl p-3.5 border border-gray-150 shadow-xs flex flex-col justify-between">
+              <div className="text-gray-400 text-[10px] uppercase font-bold tracking-wider">Total Expenses</div>
+              <div className="mt-2">
+                <span className="text-gray-400 font-mono text-[9px] mr-0.5">ZMW</span>
+                <span className="text-red-600 text-sm md:text-base font-extrabold font-mono tracking-tight">
+                  {totalExpensesVal.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
+                </span>
+              </div>
+              <div className="text-[9px] text-red-600 font-bold flex items-center gap-0.5 mt-1">
+                <TrendingDown className="w-3 h-3" /> Deducted Cash
+              </div>
+            </div>
+
             {/* Transactions */}
             <div className="bg-white rounded-2xl p-3.5 border border-gray-150 shadow-xs flex flex-col justify-between">
               <div className="text-gray-400 text-[10px] uppercase font-bold tracking-wider">Sales Made</div>
               <div className="mt-2">
-                <span className="text-gray-800 text-lg font-extrabold font-mono tracking-tight">
+                <span className="text-gray-800 text-sm md:text-base font-extrabold font-mono tracking-tight">
                   {transactionCountVal}
                 </span>
               </div>
@@ -278,184 +299,120 @@ export default function StatsTab({
             </div>
           </div>
 
-          {/* Transaction History log */}
-          <div className="bg-white rounded-2xl border border-gray-150 shadow-xs overflow-hidden">
-            <div className="p-4 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-gray-50/50">
-              <h3 className="text-gray-800 font-sans text-xs font-bold uppercase tracking-wider">
-                Sales Transaction Ledger
+          {/* Horizontal Statistics Bars */}
+          <div className="bg-white rounded-2xl p-4.5 border border-gray-150 shadow-xs space-y-4">
+            <div className="flex justify-between items-center">
+              <h3 className="text-gray-800 font-sans text-xs font-bold uppercase tracking-wider flex items-center gap-1.5">
+                <BarChart2 className="w-4 h-4 text-[#0f5132]" />
+                Financial Performance Bars
               </h3>
-              
-              {/* Payment Method Selector */}
-              <div className="flex gap-1 overflow-x-auto scrollbar-none pb-1 sm:pb-0">
-                {['All', 'Cash', 'Airtel Money', 'MTN MoMo', 'Nkongole (Debt)'].map((method) => (
-                  <button
-                    key={method}
-                    onClick={() => setSelectedMethod(method)}
-                    className={`px-2.5 py-1 rounded-lg text-[9px] font-extrabold uppercase transition-all whitespace-nowrap cursor-pointer ${
-                      selectedMethod === method
-                        ? 'bg-[#0f5132] text-white'
-                        : 'bg-white text-gray-500 border border-gray-200 hover:bg-gray-50'
-                    }`}
-                  >
-                    {method === 'Nkongole (Debt)' ? 'Nkongole' : method}
-                  </button>
-                ))}
-              </div>
+              <span className="text-[10px] text-gray-400 font-medium font-sans">Proportional breakdown</span>
             </div>
 
-            {/* Search filter bar */}
-            <div className="p-3 border-b border-gray-100 flex items-center gap-2">
-              <div className="flex-1 relative flex items-center">
-                <Search className="w-4 h-4 text-gray-400 absolute left-3 pointer-events-none" />
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search by invoice, product name, or payment channel..."
-                  className="w-full h-9 pl-9 pr-3 text-xs bg-gray-100/75 border border-transparent rounded-xl focus:bg-white focus:border-gray-200 focus:ring-1 focus:ring-gray-200 outline-none"
-                />
-              </div>
-            </div>
-
-            {/* List of sales */}
-            <div className="divide-y divide-gray-100 max-h-96 overflow-y-auto">
-              {filteredSales.length > 0 ? (
-                filteredSales.map((sale) => (
-                  <button
-                    key={sale.id}
-                    onClick={() => setSelectedSale(sale)}
-                    className="w-full text-left p-3.5 hover:bg-gray-50/80 transition-colors flex items-center justify-between group"
-                  >
-                    <div className="space-y-1 min-w-0 flex-1 pr-2">
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono text-[10px] font-bold text-gray-400 group-hover:text-[#0f5132] transition-colors">
-                          #{sale.invoiceNumber}
-                        </span>
-                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${
-                          sale.paymentMethod === 'Cash' ? 'bg-emerald-50 text-emerald-700' :
-                          sale.paymentMethod === 'Nkongole (Debt)' ? 'bg-red-50 text-red-700' :
-                          'bg-sky-50 text-sky-700'
-                        }`}>
-                          {sale.paymentMethod}
-                        </span>
-                      </div>
-                      <div className="text-gray-700 text-xs font-semibold truncate">
-                        {sale.items.map(item => `${item.productName} (x${item.quantity})`).join(', ')}
-                      </div>
-                      <div className="text-[10px] text-gray-400 flex items-center gap-1">
-                        <Calendar className="w-3 h-3" /> {sale.date} at {sale.time}
-                      </div>
-                    </div>
-
-                    <div className="text-right shrink-0">
-                      <div className="text-gray-900 text-xs font-extrabold font-mono">
-                        {formatZMW(sale.totalAmount)}
-                      </div>
-                      <div className="text-[10px] text-[#0f5132] font-semibold font-mono">
-                        + {formatZMW(sale.totalProfit)} profit
-                      </div>
-                    </div>
-                    
-                    <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-gray-500 ml-2 transition-colors" />
-                  </button>
-                ))
-              ) : (
-                <div className="text-center py-10 text-xs text-gray-400 italic">
-                  No matching transaction logs found.
+            <div className="space-y-4">
+              {/* Gross Sales Row */}
+              <div className="space-y-1.5">
+                <div className="flex justify-between text-xs">
+                  <span className="text-gray-600 font-semibold">Gross Sales</span>
+                  <span className="font-extrabold font-mono text-gray-900">{formatZMW(grossSalesVal)}</span>
                 </div>
-              )}
+                <div className="w-full bg-gray-100 h-3.5 rounded-full overflow-hidden relative shadow-inner">
+                  <motion.div 
+                    initial={{ width: 0 }}
+                    animate={{ width: '100%' }}
+                    className="bg-gray-800 h-full rounded-full"
+                    transition={{ duration: 0.8 }}
+                  />
+                </div>
+                <div className="flex justify-between text-[10px] text-gray-400">
+                  <span>Total inflow benchmark</span>
+                  <span>100%</span>
+                </div>
+              </div>
+
+              {/* Net Profit Row */}
+              <div className="space-y-1.5">
+                <div className="flex justify-between text-xs">
+                  <span className="text-emerald-700 font-semibold flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                    Net Profit
+                  </span>
+                  <span className="font-extrabold font-mono text-emerald-700">{formatZMW(netProfitVal)}</span>
+                </div>
+                <div className="w-full bg-gray-100 h-3.5 rounded-full overflow-hidden relative shadow-inner">
+                  <motion.div 
+                    initial={{ width: 0 }}
+                    animate={{ 
+                      width: `${grossSalesVal > 0 ? Math.max(0, Math.min(100, (netProfitVal / grossSalesVal) * 100)) : 0}%` 
+                    }}
+                    className="bg-emerald-600 h-full rounded-full"
+                    transition={{ duration: 0.8, delay: 0.1 }}
+                  />
+                </div>
+                <div className="flex justify-between text-[10px] text-gray-400">
+                  <span>Profit margin percentage</span>
+                  <span>{grossSalesVal > 0 ? ((netProfitVal / grossSalesVal) * 100).toFixed(1) : '0.0'}%</span>
+                </div>
+              </div>
+
+              {/* Total Expenses Row */}
+              <div className="space-y-1.5">
+                <div className="flex justify-between text-xs">
+                  <span className="text-red-700 font-semibold flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
+                    Operating Expenses
+                  </span>
+                  <span className="font-extrabold font-mono text-red-700">{formatZMW(totalExpensesVal)}</span>
+                </div>
+                <div className="w-full bg-gray-100 h-3.5 rounded-full overflow-hidden relative shadow-inner">
+                  <motion.div 
+                    initial={{ width: 0 }}
+                    animate={{ 
+                      width: `${grossSalesVal > 0 ? Math.max(0, Math.min(100, (totalExpensesVal / grossSalesVal) * 100)) : 0}%` 
+                    }}
+                    className="bg-red-500 h-full rounded-full"
+                    transition={{ duration: 0.8, delay: 0.2 }}
+                  />
+                </div>
+                <div className="flex justify-between text-[10px] text-gray-400">
+                  <span>Expense deduction of gross</span>
+                  <span>{grossSalesVal > 0 ? ((totalExpensesVal / grossSalesVal) * 100).toFixed(1) : '0.0'}%</span>
+                </div>
+              </div>
+
+              {/* Cost of Goods / Other Cost Row */}
+              {(() => {
+                const cogsVal = Math.max(0, grossSalesVal - netProfitVal - totalExpensesVal);
+                const cogsPct = grossSalesVal > 0 ? (cogsVal / grossSalesVal) * 100 : 0;
+                return (
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between text-xs">
+                      <span className="text-amber-700 font-semibold flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                        Cost of Goods Sold (COGS) & Other
+                      </span>
+                      <span className="font-extrabold font-mono text-amber-700">{formatZMW(cogsVal)}</span>
+                    </div>
+                    <div className="w-full bg-gray-100 h-3.5 rounded-full overflow-hidden relative shadow-inner">
+                      <motion.div 
+                        initial={{ width: 0 }}
+                        animate={{ width: `${cogsPct}%` }}
+                        className="bg-amber-500 h-full rounded-full"
+                        transition={{ duration: 0.8, delay: 0.3 }}
+                      />
+                    </div>
+                    <div className="flex justify-between text-[10px] text-gray-400">
+                      <span>Inventory & wholesale baseline costs</span>
+                      <span>{cogsPct.toFixed(1)}%</span>
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           </div>
 
         </div>
       </div>
-
-      {/* Invoice / Receipt Modal Detail View */}
-      <AnimatePresence>
-        {selectedSale && (
-          <div className="fixed inset-0 bg-black/40 flex items-end justify-center sm:items-center z-50 p-0 sm:p-4">
-            <motion.div
-              initial={{ opacity: 0, y: 100 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 100 }}
-              className="bg-white w-full max-w-sm rounded-t-3xl sm:rounded-3xl shadow-xl overflow-hidden flex flex-col max-h-[85vh] sm:max-h-none"
-            >
-              <div className="p-4 bg-gray-50 border-b border-gray-100 flex justify-between items-center">
-                <span className="text-gray-700 font-sans text-xs font-bold uppercase tracking-wider">
-                  Transaction Receipt
-                </span>
-                <button 
-                  onClick={() => setSelectedSale(null)}
-                  className="p-1.5 hover:bg-gray-200 rounded-full text-gray-500 transition-colors cursor-pointer"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-
-              {/* Receipt Body */}
-              <div className="p-5 overflow-y-auto space-y-4">
-                <div className="text-center space-y-1">
-                  <span className="font-extrabold text-gray-800 text-base">{settings?.businessName || 'Bine Shop'}</span>
-                  <p className="text-gray-400 text-[10px] uppercase font-mono tracking-wider">Invoice #{selectedSale.invoiceNumber}</p>
-                </div>
-
-                <div className="border-t border-dashed border-gray-200 pt-3 space-y-2 text-xs">
-                  <div className="flex justify-between text-gray-500">
-                    <span>Date:</span>
-                    <span className="font-semibold text-gray-700">{selectedSale.date}</span>
-                  </div>
-                  <div className="flex justify-between text-gray-500">
-                    <span>Time:</span>
-                    <span className="font-semibold text-gray-700">{selectedSale.time}</span>
-                  </div>
-                  <div className="flex justify-between text-gray-500">
-                    <span>Payment Channel:</span>
-                    <span className="font-bold text-gray-800">{selectedSale.paymentMethod}</span>
-                  </div>
-                </div>
-
-                {/* Items */}
-                <div className="border-t border-dashed border-gray-200 pt-3 space-y-2">
-                  <span className="text-gray-400 font-bold text-[10px] uppercase tracking-wider block">Items Purchased</span>
-                  <div className="space-y-1.5">
-                    {selectedSale.items.map((item, index) => (
-                      <div key={index} className="flex justify-between text-xs text-gray-700">
-                        <span>{item.productName} <span className="text-gray-400 text-[11px]">x{item.quantity}</span></span>
-                        <span className="font-semibold font-mono">{formatZMW(item.sellingPrice * item.quantity)}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Totals */}
-                <div className="border-t border-dashed border-gray-200 pt-3 space-y-2">
-                  <div className="flex justify-between items-center text-sm font-bold text-gray-800">
-                    <span>Total Amount Paid:</span>
-                    <span className="font-mono text-[#0f5132] text-base">{formatZMW(selectedSale.totalAmount)}</span>
-                  </div>
-                  <div className="flex justify-between items-center text-[11px] text-[#0f5132] font-semibold">
-                    <span>Expected Net Profit:</span>
-                    <span className="font-mono bg-emerald-50 px-2 py-0.5 rounded-md">+{formatZMW(selectedSale.totalProfit)}</span>
-                  </div>
-                </div>
-
-                <div className="bg-emerald-50/50 rounded-xl p-3 border border-emerald-100/50 text-[10px] text-[#0f5132] text-center leading-relaxed">
-                  💡 This record is fully persistent. Standard transactions and Nkongole repayment stats are automatically integrated into the ledger.
-                </div>
-              </div>
-
-              <div className="p-4 bg-gray-50 border-t border-gray-100 flex gap-2">
-                <button
-                  onClick={() => setSelectedSale(null)}
-                  className="flex-1 h-10 bg-[#0f5132] hover:bg-[#0c4027] text-white rounded-xl text-xs font-bold transition-all cursor-pointer"
-                >
-                  Close Receipt
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
     </div>
   );
 }

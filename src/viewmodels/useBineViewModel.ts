@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Product, Debtor, Sale, Settings, DebtTransaction, AppNotification } from '../types';
+import { Product, Debtor, Sale, Settings, DebtTransaction, AppNotification, Expense } from '../types';
 import { repository } from '../data/repositories';
 import { generateInvoiceNumber, getFormattedDate, getFormattedTime } from '../domain/entities';
 
@@ -8,6 +8,7 @@ export function useBineViewModel() {
   const [products, setProducts] = useState<Product[]>([]);
   const [debtors, setDebtors] = useState<Debtor[]>([]);
   const [sales, setSales] = useState<Sale[]>([]);
+  const [expenses, setExpenses] = useState<Expense[]>([]);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [settings, setSettings] = useState<Settings>({
     businessName: '',
@@ -54,6 +55,7 @@ export function useBineViewModel() {
     setProducts(initialProducts);
     setDebtors(initialDebtors);
     setSales(initialSales);
+    setExpenses(repository.getExpenses());
     setNotifications(repository.getNotifications());
     setSettings(repository.getSettings());
   }, []);
@@ -74,12 +76,17 @@ export function useBineViewModel() {
     repository.saveSales(newSales);
   };
 
+  const updateExpensesState = (newExpenses: Expense[]) => {
+    setExpenses(newExpenses);
+    repository.saveExpenses(newExpenses);
+  };
+
   const updateNotificationsState = (newNotifications: AppNotification[]) => {
     setNotifications(newNotifications);
     repository.saveNotifications(newNotifications);
   };
 
-  const addNotification = (title: string, message: string, type: 'sale' | 'repayment' | 'debtor' | 'restock' | 'info') => {
+  const addNotification = (title: string, message: string, type: 'sale' | 'repayment' | 'debtor' | 'restock' | 'info' | 'expense') => {
     const newNotif: AppNotification = {
       id: `n_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
       title,
@@ -90,6 +97,34 @@ export function useBineViewModel() {
     };
     const currentNotifs = repository.getNotifications();
     updateNotificationsState([newNotif, ...currentNotifs]);
+  };
+
+  const addExpense = (amount: number, description: string) => {
+    const newExpense: Expense = {
+      id: `e_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
+      amount,
+      description: description.trim() || 'General Expense',
+      date: getFormattedDate(),
+      time: getFormattedTime()
+    };
+    const updatedExpenses = [newExpense, ...expenses];
+    updateExpensesState(updatedExpenses);
+
+    addNotification(
+      'Expense Logged 💸',
+      `K ${amount.toFixed(2)} logged as expense for "${description.trim() || 'General Expense'}".`,
+      'expense'
+    );
+  };
+
+  const deleteExpense = (expenseId: string) => {
+    const updated = expenses.filter(e => e.id !== expenseId);
+    updateExpensesState(updated);
+    addNotification(
+      'Expense Deleted 🗑️',
+      'The selected expense transaction was permanently removed.',
+      'info'
+    );
   };
 
   const markNotificationAsRead = (id: string) => {
@@ -587,7 +622,8 @@ export function useBineViewModel() {
       ? sales.filter(s => !s.id.startsWith('s1') && !s.id.startsWith('s2') && !s.id.startsWith('s3') && !s.id.startsWith('s4'))
       : sales;
     const extraProfit = newSales.reduce((acc, s) => acc + s.totalProfit, 0);
-    return seedProfit + extraProfit;
+    const totalExpenses = expenses.reduce((acc, e) => acc + e.amount, 0);
+    return seedProfit + extraProfit - totalExpenses;
   };
 
   const getGrossSales = (): number => {
@@ -598,7 +634,8 @@ export function useBineViewModel() {
       ? sales.filter(s => !s.id.startsWith('s1') && !s.id.startsWith('s2') && !s.id.startsWith('s3') && !s.id.startsWith('s4'))
       : sales;
     const extraGross = newSales.reduce((acc, s) => acc + s.totalAmount, 0);
-    return seedGross + extraGross;
+    const totalExpenses = expenses.reduce((acc, e) => acc + e.amount, 0);
+    return seedGross + extraGross - totalExpenses;
   };
 
   const getTotalTransactionsCount = (): number => {
@@ -615,10 +652,12 @@ export function useBineViewModel() {
     localStorage.removeItem('bine_pos_products');
     localStorage.removeItem('bine_pos_debtors');
     localStorage.removeItem('bine_pos_sales');
+    localStorage.removeItem('bine_pos_expenses');
     localStorage.removeItem('bine_pos_notifications');
     setProducts([]);
     setDebtors([]);
     setSales([]);
+    setExpenses([]);
     setNotifications([]);
     addNotification(
       'Database Cleared',
@@ -632,6 +671,7 @@ export function useBineViewModel() {
     products,
     debtors,
     sales,
+    expenses,
     notifications,
     settings,
     
@@ -665,6 +705,8 @@ export function useBineViewModel() {
     clearAllNotifications,
     updateSettings: updateSettingsState,
     clearLedgerData,
+    addExpense,
+    deleteExpense,
 
     // Analytics metrics
     getTotalNetProfit,

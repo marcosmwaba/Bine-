@@ -26,7 +26,8 @@ import {
   Wrench,
   Shirt,
   Heart,
-  Grid
+  Grid,
+  Receipt
 } from 'lucide-react';
 import { Product, Debtor } from '../types';
 import { formatCurrency } from '../domain/entities';
@@ -47,6 +48,7 @@ interface SalesTabProps {
   clearCart: () => void;
   getCartTotal: () => void;
   processCheckout: (paymentMethod: 'Cash' | 'Airtel Money' | 'MTN MoMo' | 'Nkongole (Debt)', debtorId?: string) => boolean;
+  addExpense: (amount: number, description: string) => void;
   selectedCatalogCategory: string;
   setSelectedCatalogCategory: (category: string) => void;
   onNavigateToTab: (tab: string) => void;
@@ -70,6 +72,7 @@ export default function SalesTab({
   clearCart,
   getCartTotal,
   processCheckout,
+  addExpense,
   selectedCatalogCategory,
   setSelectedCatalogCategory,
   onNavigateToTab,
@@ -81,6 +84,8 @@ export default function SalesTab({
   const [activeTab, setActiveTab] = useState<'numpad' | 'catalog'>('numpad');
   const [showPaymentSheet, setShowPaymentSheet] = useState(false);
   const [showDebtorSelectSheet, setShowDebtorSelectSheet] = useState(false);
+  const [showExpenseForm, setShowExpenseForm] = useState(false);
+  const [expenseDescription, setExpenseDescription] = useState('General Expense');
   const [debtorSearchQuery, setDebtorSearchQuery] = useState('');
   const [successAnim, setSuccessAnim] = useState<string | null>(null);
 
@@ -199,6 +204,21 @@ export default function SalesTab({
         triggerSuccess(`K ${totalDue.toFixed(2)} paid successfully via ${method}!`);
       }
     }
+  };
+
+  const handleSelectExpense = () => {
+    setShowExpenseForm(true);
+    setExpenseDescription('General Expense');
+  };
+
+  const handleRecordExpense = (e: React.FormEvent) => {
+    e.preventDefault();
+    addExpense(totalDue, expenseDescription);
+    setShowExpenseForm(false);
+    setShowPaymentSheet(false);
+    clearCart();
+    clearNumpadAmount();
+    triggerSuccess(`K ${totalDue.toFixed(2)} logged as expense: ${expenseDescription}`);
   };
 
   const handleSelectDebtor = (debtor: Debtor) => {
@@ -642,7 +662,7 @@ export default function SalesTab({
             >
               <div className="w-12 h-1 bg-gray-200 rounded-full mx-auto mb-4 shrink-0" />
               
-              {!showDebtorSelectSheet ? (
+              {!showDebtorSelectSheet && !showExpenseForm ? (
                 <>
                   <h2 className="font-sans font-bold text-xl text-center text-gray-900 mb-1">
                     Select Payment Method
@@ -699,6 +719,18 @@ export default function SalesTab({
                       <span className="font-sans font-bold text-base text-left">Nkongole (Debt / Credit)</span>
                       <ChevronRight className="ml-auto w-5 h-5" />
                     </button>
+
+                    {/* Expense Deduction */}
+                    <button
+                      className="w-full py-3.5 bg-gray-700 hover:bg-gray-800 text-white rounded-2xl flex items-center px-4 gap-4 active:scale-[0.97] transition-all shadow-sm"
+                      onClick={handleSelectExpense}
+                    >
+                      <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
+                        <Receipt className="w-5 h-5 text-red-300" />
+                      </div>
+                      <span className="font-sans font-bold text-base text-left">Deduct as Business Expense</span>
+                      <ChevronRight className="ml-auto w-5 h-5 text-red-300" />
+                    </button>
                   </div>
 
                   <button
@@ -708,6 +740,75 @@ export default function SalesTab({
                     Cancel
                   </button>
                 </>
+              ) : showExpenseForm ? (
+                <form onSubmit={handleRecordExpense} className="flex flex-col h-full">
+                  <div className="flex items-center mb-4">
+                    <button
+                      type="button"
+                      className="p-1 hover:bg-gray-100 rounded-full text-gray-600 transition-all mr-2"
+                      onClick={() => setShowExpenseForm(false)}
+                    >
+                      <ArrowLeft className="w-5 h-5" />
+                    </button>
+                    <h2 className="font-sans font-bold text-lg text-gray-900">
+                      Log Business Expense
+                    </h2>
+                  </div>
+
+                  <div className="space-y-4 flex-1">
+                    <p className="text-xs text-gray-500 leading-relaxed">
+                      Confirm the deduction of <span className="font-bold text-red-600">{formatCurrency(totalDue)}</span>. This will deduct from actual gross sales and net profit.
+                    </p>
+
+                    <div className="space-y-1">
+                      <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-wide">Expense Category / Description</label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="e.g. Fuel, Transport, Rent, Salaries, General"
+                        value={expenseDescription}
+                        onChange={(e) => setExpenseDescription(e.target.value)}
+                        className="w-full h-11 border border-gray-200 rounded-xl px-3 focus:outline-hidden focus:border-[#0f5132] focus:ring-1 focus:ring-[#0f5132] font-sans text-xs bg-gray-50/50"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-wide">Quick Suggestions</label>
+                      <div className="flex flex-wrap gap-2">
+                        {['Fuel', 'Transport', 'Rent', 'Salaries', 'Restock', 'Refreshments', 'Utility Bill', 'General'].map((item) => (
+                          <button
+                            type="button"
+                            key={item}
+                            onClick={() => setExpenseDescription(item)}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
+                              expenseDescription.toLowerCase() === item.toLowerCase()
+                                ? 'bg-red-50 text-red-600 border-red-200 font-bold'
+                                : 'bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100'
+                            }`}
+                          >
+                            {item}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-6 flex gap-3">
+                    <button
+                      type="button"
+                      className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 text-gray-600 font-sans font-bold text-xs rounded-xl transition-all text-center"
+                      onClick={() => setShowExpenseForm(false)}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="flex-2 py-3 bg-red-600 hover:bg-red-700 text-white font-sans font-bold text-xs rounded-xl shadow-md transition-all text-center uppercase"
+                    >
+                      Deduct Expense: {formatCurrency(totalDue)}
+                    </button>
+                  </div>
+                </form>
               ) : (
                 <div className="flex flex-col h-full">
                   {showAddDebtorForm ? (
