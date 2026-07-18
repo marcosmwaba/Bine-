@@ -1,5 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { Capacitor, registerPlugin } from '@capacitor/core';
+
+declare const __APP_VERSION__: string;
+
+interface ApkUpdaterPluginType {
+  installApk(options: { url: string }): Promise<{ success: boolean }>;
+}
+
+const ApkUpdater = registerPlugin<ApkUpdaterPluginType>('ApkUpdater');
+
+let hasCheckedThisSession = false;
 import { 
   Calculator, 
   Package, 
@@ -61,33 +72,114 @@ export default function App() {
   // Connect state and controllers via the ViewModel
   const vm = useBineViewModel();
 
-  // Auto update system states (Fixed to build package.json v1.0.23 release version)
-  const [appVersion] = useState<string>('v1.0.23');
+  // Use Vite injected version as the single source of truth
+  const [appVersion] = useState<string>(() => {
+    const rawVersion = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '1.0.23';
+    return rawVersion.startsWith('v') ? rawVersion : `v${rawVersion}`;
+  });
   const [latestVersion, setLatestVersion] = useState<string | null>(null);
+  const [apkDownloadUrl, setApkDownloadUrl] = useState<string | null>(null);
   const [isCheckingUpdate, setIsCheckingUpdate] = useState<boolean>(false);
   const [updateError, setUpdateError] = useState<string | null>(null);
   const [showUpdateDialog, setShowUpdateDialog] = useState<boolean>(false);
+  const [isInstalling, setIsInstalling] = useState<boolean>(false);
+  const [installError, setInstallError] = useState<string | null>(null);
 
-  const checkGitHubUpdates = async () => {
-    setIsCheckingUpdate(true);
-    setUpdateError(null);
-    try {
-      // Fetch latest release tag from GitHub Repo marcosmwaba/Bine-
-      const res = await fetch('https://api.github.com/repos/marcosmwaba/Bine-/releases/latest');
-      if (res.ok) {
-        const data = await res.json();
-        if (data && data.tag_name) {
-          setLatestVersion(data.tag_name);
+  const isNewerVersion = (current: string, latest: string): boolean => {
+    const cleanCurrent = current.startsWith('v') ? current.slice(1) : current;
+    const cleanLatest = latest.startsWith('v') ? latest.slice(1) : latest;
+    
+    const currentParts = cleanCurrent.split('.').map(x => parseInt(x, 10) || 0);
+    const latestParts = cleanLatest.split('.').map(x => parseInt(x, 10) || 0);
+    
+    const maxLength = Math.max(currentParts.length, latestParts.length);
+    for (let i = 0; i < maxLength; i++) {
+      const curr = currentParts[i] || 0;
+      const late = latestParts[i] || 0;
+      if (late > curr) return true;
+      if (late < curr) return false;
+    }
+    return false;
+  };
+
+  const checkGitHubUpdates = async (force: boolean = false) => {
+    // If not forced and already checked this session, load from cache
+    if (!force && hasCheckedThisSession) {
+      const cached = localStorage.getItem('bine_update_check_result');
+      if (cached) {
+        try {
+          const parsed = JSON.parse(cached);
+          if (parsed.error) {
+            setUpdateError(parsed.error);
+          } else {
+            setLatestVersion(parsed.version);
+            setApkDownloadUrl(parsed.url);
+          }
           return;
+        } catch (e) {
+          // ignore cache parse error
         }
       }
-      throw new Error('Release info not found or API rate limit reached');
+    }
+
+    setIsCheckingUpdate(true);
+    setUpdateError(null);
+    setLatestVersion(null);
+    setApkDownloadUrl(null);
+
+    try {
+      const res = await fetch('https://api.github.com/repos/marcosmwaba/Bine-/releases/latest');
+      
+      if (res.status === 404) {
+        throw new Error('No stable release found (404)');
+      }
+      
+      if (res.status === 403) {
+        const rateLimitReset = res.headers.get('X-RateLimit-Reset');
+        let retryMsg = 'Rate limit reached. Please try again later.';
+        if (rateLimitReset) {
+          const resetDate = new Date(parseInt(rateLimitReset, 10) * 1000);
+          retryMsg = `Rate limit reached. Try again after ${resetDate.toLocaleTimeString()}.`;
+        }
+        throw new Error(retryMsg);
+      }
+
+      if (!res.ok) {
+        throw new Error(`GitHub API Error: ${res.statusText} (${res.status})`);
+      }
+
+      const data = await res.json();
+      if (!data || !data.tag_name) {
+        throw new Error('Invalid release payload received from GitHub');
+      }
+
+      const tag = data.tag_name;
+      
+      // Find APK asset
+      let apkUrl: string | null = null;
+      if (data.assets && Array.isArray(data.assets)) {
+        const apkAsset = data.assets.find((asset: any) => asset.name && asset.name.endsWith('.apk'));
+        if (apkAsset) {
+          apkUrl = apkAsset.browser_download_url;
+        }
+      }
+
+      if (!apkUrl) {
+        throw new Error(`No APK file asset found in release ${tag}`);
+      }
+
+      setLatestVersion(tag);
+      setApkDownloadUrl(apkUrl);
+
+      // Save to cache
+      localStorage.setItem('bine_update_check_result', JSON.stringify({ version: tag, url: apkUrl }));
+      localStorage.setItem('bine_update_check_time', Date.now().toString());
+      hasCheckedThisSession = true;
+
     } catch (err: any) {
-      console.warn("GitHub release check failed, using simulated fallback for demo:", err.message);
-      // Simulate that there is a v1.0.24 update available from Github so the user can test the flow!
-      setTimeout(() => {
-        setLatestVersion('v1.0.24');
-      }, 800);
+      console.error('GitHub update check failed:', err);
+      setUpdateError(err.message || 'Couldn\'t check for updates');
+      localStorage.setItem('bine_update_check_result', JSON.stringify({ error: err.message || 'Couldn\'t check for updates' }));
     } finally {
       setIsCheckingUpdate(false);
     }
@@ -96,7 +188,7 @@ export default function App() {
   // Run update check when sidebar is opened
   useEffect(() => {
     if (showSidebar && !latestVersion && !isCheckingUpdate) {
-      checkGitHubUpdates();
+      checkGitHubUpdates(false);
     }
   }, [showSidebar]);
 
@@ -104,6 +196,34 @@ export default function App() {
     if (!latestVersion) return;
     setShowSidebar(false);
     setShowUpdateDialog(true);
+  };
+
+  const handleDownloadAndInstall = async () => {
+    if (!apkDownloadUrl) {
+      setInstallError('No APK download URL found.');
+      return;
+    }
+    
+    setIsInstalling(true);
+    setInstallError(null);
+    try {
+      if (!Capacitor.isNativePlatform()) {
+        throw new Error('Not running inside a native Android application. Direct APK downloading and intent installation is only available on actual Android devices.');
+      }
+      
+      console.log('Starting native APK download & install for URL:', apkDownloadUrl);
+      const res = await ApkUpdater.installApk({ url: apkDownloadUrl });
+      if (res && res.success) {
+        console.log('Apk installer intent fired successfully!');
+      } else {
+        throw new Error('ApkUpdater did not return a success response.');
+      }
+    } catch (err: any) {
+      console.error('Failed to install APK:', err);
+      setInstallError(err.message || 'Direct install failed. You can still download the APK manually.');
+    } finally {
+      setIsInstalling(false);
+    }
   };
 
   const unreadCount = vm.notifications.filter(n => !n.read).length;
@@ -524,7 +644,28 @@ export default function App() {
                           <RefreshCw className="w-3.5 h-3.5 animate-spin text-orange-500" />
                           <span>Checking GitHub for updates...</span>
                         </div>
-                      ) : latestVersion && latestVersion !== appVersion ? (
+                      ) : updateError ? (
+                        <div className="p-3 bg-red-50 border border-red-200 rounded-2xl flex flex-col gap-2 text-left shadow-xs">
+                          <div className="flex items-start gap-2">
+                            <AlertTriangle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+                            <div className="min-w-0 flex-1">
+                              <p className="font-sans font-extrabold text-[11px] text-red-800 leading-none">
+                                Check Failed
+                              </p>
+                              <p className="text-[9px] text-red-600 mt-1 leading-normal font-medium break-words">
+                                {updateError}
+                              </p>
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => checkGitHubUpdates(true)}
+                            className="w-full h-8 bg-red-600 hover:bg-red-700 active:scale-98 text-white rounded-xl font-sans font-extrabold text-[10px] flex items-center justify-center gap-1 transition-all cursor-pointer border border-red-700"
+                          >
+                            <RefreshCw className="w-3 h-3 text-white" />
+                            Retry Check
+                          </button>
+                        </div>
+                      ) : latestVersion && isNewerVersion(appVersion, latestVersion) ? (
                         <div className="p-3 bg-orange-50 border border-orange-200 rounded-2xl flex flex-col gap-2 text-left shadow-xs">
                           <div className="flex items-start gap-2.5">
                             <div className="p-1.5 bg-orange-100 rounded-lg text-orange-600 animate-pulse shrink-0">
@@ -555,7 +696,7 @@ export default function App() {
                             <span className="font-sans font-bold">App is up to date</span>
                           </div>
                           <button 
-                            onClick={checkGitHubUpdates}
+                            onClick={() => checkGitHubUpdates(true)}
                             className="text-orange-500 hover:text-orange-600 font-sans font-extrabold uppercase tracking-wider cursor-pointer"
                           >
                             Check
@@ -969,31 +1110,75 @@ export default function App() {
 
                 {/* Actions */}
                 <div className="flex flex-col gap-2 pt-1">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const downloadUrl = `https://github.com/marcosmwaba/Bine-/releases/download/${latestVersion}/app-debug.apk`;
-                      window.open(downloadUrl, '_blank');
-                    }}
-                    className="w-full py-2.5 bg-[#0f5132] hover:bg-[#0c4027] active:scale-98 text-white rounded-xl font-sans font-extrabold text-xs transition-all shadow-md flex items-center justify-center gap-1.5 cursor-pointer text-center"
-                  >
-                    <CloudDownload className="w-4 h-4" />
-                    Download APK (app-debug.apk)
-                  </button>
+                  {installError && (
+                    <div className="p-2.5 bg-red-50 border border-red-100 rounded-xl text-[10px] text-red-700 leading-normal font-medium text-left">
+                      <span className="font-extrabold block mb-0.5">⚠️ Installation Error</span>
+                      {installError}
+                    </div>
+                  )}
+
+                  {isInstalling ? (
+                    <div className="w-full py-3 bg-orange-50 border border-orange-100 rounded-xl flex items-center justify-center gap-2 text-xs font-bold text-orange-800">
+                      <RefreshCw className="w-4 h-4 animate-spin text-orange-600" />
+                      <span>Downloading & Installing Update...</span>
+                    </div>
+                  ) : (
+                    <>
+                      {Capacitor.isNativePlatform() ? (
+                        <button
+                          type="button"
+                          onClick={handleDownloadAndInstall}
+                          className="w-full py-2.5 bg-[#0f5132] hover:bg-[#0c4027] active:scale-98 text-white rounded-xl font-sans font-extrabold text-xs transition-all shadow-md flex items-center justify-center gap-1.5 cursor-pointer text-center"
+                        >
+                          <CloudDownload className="w-4 h-4" />
+                          Download & Install Now
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={handleDownloadAndInstall}
+                          className="w-full py-2.5 bg-gray-200 hover:bg-gray-300 active:scale-98 text-gray-700 rounded-xl font-sans font-extrabold text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer text-center"
+                          title="Fails on web browser, showing real error as required"
+                        >
+                          <Smartphone className="w-4 h-4 text-gray-600" />
+                          Simulate Native Install (Fails)
+                        </button>
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (apkDownloadUrl) {
+                            window.open(apkDownloadUrl, '_blank');
+                          }
+                        }}
+                        className="w-full py-2 bg-orange-100 hover:bg-orange-200 text-orange-800 rounded-xl font-sans font-bold text-[11px] transition-all flex items-center justify-center gap-1 cursor-pointer text-center"
+                      >
+                        <CloudDownload className="w-3.5 h-3.5" />
+                        Download APK Manually
+                      </button>
+                    </>
+                  )}
+
                   <button
                     type="button"
                     onClick={() => {
                       const releaseUrl = `https://github.com/marcosmwaba/Bine-/releases/tag/${latestVersion}`;
                       window.open(releaseUrl, '_blank');
                     }}
-                    className="w-full py-2 bg-gray-100 hover:bg-gray-200 active:scale-98 text-gray-700 rounded-xl font-sans font-bold text-[11px] transition-all flex items-center justify-center gap-1 cursor-pointer text-center"
+                    className="w-full py-1.5 hover:bg-gray-50 text-gray-500 hover:text-gray-700 rounded-xl font-sans font-bold text-[10px] transition-all flex items-center justify-center gap-1 cursor-pointer text-center"
                   >
                     View Release Notes
                   </button>
+
                   <button
                     type="button"
-                    onClick={() => setShowUpdateDialog(false)}
-                    className="w-full py-2 text-center text-gray-400 hover:text-gray-600 font-sans font-bold text-[10px] cursor-pointer"
+                    disabled={isInstalling}
+                    onClick={() => {
+                      setShowUpdateDialog(false);
+                      setInstallError(null);
+                    }}
+                    className="w-full py-1.5 text-center text-gray-400 hover:text-gray-600 font-sans font-bold text-[10px] cursor-pointer disabled:opacity-55"
                   >
                     Dismiss
                   </button>

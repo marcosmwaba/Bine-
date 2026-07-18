@@ -45,19 +45,22 @@ jobs:
     steps:
       - name: Checkout Source Code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Fix / Restore Clean gradle-wrapper.jar
+      - name: Verify gradle-wrapper.jar right after checkout
         run: |
-          echo "----- Ensuring gradle-wrapper.jar is pristine and uncorrupted -----"
-          mkdir -p android/gradle/wrapper
-          curl -sSL -o android/gradle/wrapper/gradle-wrapper.jar https://raw.githubusercontent.com/gradle/gradle/v8.14.3/gradle/wrapper/gradle-wrapper.jar
-          
-          echo "----- Verifying restored gradle-wrapper.jar -----"
+          echo "----- immediately after checkout -----"
           file android/gradle/wrapper/gradle-wrapper.jar
           ls -la android/gradle/wrapper/gradle-wrapper.jar
           sha256sum android/gradle/wrapper/gradle-wrapper.jar
           echo "----- zip integrity test -----"
-          unzip -tq android/gradle/wrapper/gradle-wrapper.jar && echo "ZIP INTEGRITY OK" || (echo "ZIP CORRUPT" && exit 1)
+          unzip -tq android/gradle/wrapper/gradle-wrapper.jar && echo "ZIP OK" || (echo "ZIP CORRUPT - fix the committed jar, do not silently patch it here" && exit 1)
+
+      - name: Set up Node.js Environment
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
 
       - name: Determine Version Tag
         id: get_version
@@ -67,15 +70,9 @@ jobs:
           elif [ "${{ github.ref_type }}" = "tag" ]; then
             echo "version=${{ github.ref_name }}" >> $GITHUB_OUTPUT
           else
-            # Dynamically resolve version from package.json for professional automated tagging
             PKG_VERSION=$(node -p "require('./package.json').version")
-            echo "version=v${PKG_VERSION}" >> $GITHUB_OUTPUT
+            echo "version=dev-v${PKG_VERSION}-${{ github.sha }}" >> $GITHUB_OUTPUT
           fi
-
-      - name: Set up Node.js Environment
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
 
       - name: Install pnpm
         uses: pnpm/action-setup@v4
@@ -113,89 +110,8 @@ jobs:
           echo "----- after npx cap sync android -----"
           file android/gradle/wrapper/gradle-wrapper.jar
           ls -la android/gradle/wrapper/gradle-wrapper.jar
-
-      - name: Auto-Repair Corrupted PNG Assets
-        run: |
-          python3 -c "
-          import os, zlib, struct
-          
-          def create_valid_png(width, height, filename, r=30, g=41, b=59):
-              png_signature = b'\x89PNG\r\n\x1a\n'
-              ihdr_data = struct.pack('>IIBBBBB', width, height, 8, 2, 0, 0, 0)
-              def make_chunk(tag, data):
-                  return struct.pack('>I', len(data)) + tag + data + struct.pack('>I', zlib.crc32(tag + data) & 0xffffffff)
-              ihdr_chunk = make_chunk(b'IHDR', ihdr_data)
-              row_data = bytes([0] + [r, g, b] * width)
-              flat_data = row_data * height
-              idat_chunk = make_chunk(b'IDAT', zlib.compress(flat_data))
-              iend_chunk = make_chunk(b'IEND', b'')
-              os.makedirs(os.path.dirname(filename), exist_ok=True)
-              with open(filename, 'wb') as f:
-                  f.write(png_signature + ihdr_chunk + idat_chunk + iend_chunk)
-                  
-          def get_dimensions(filepath):
-              filename = os.path.basename(filepath)
-              parent_dir = os.path.basename(os.path.dirname(filepath))
-              if 'ic_launcher' in filename:
-                  if 'foreground' in filename:
-                      sizes = {
-                          'mipmap-mdpi': (108, 108),
-                          'mipmap-hdpi': (162, 162),
-                          'mipmap-xhdpi': (216, 216),
-                          'mipmap-xxhdpi': (324, 324),
-                          'mipmap-xxxhdpi': (432, 432)
-                      }
-                  else:
-                      sizes = {
-                          'mipmap-mdpi': (48, 48),
-                          'mipmap-hdpi': (72, 72),
-                          'mipmap-xhdpi': (96, 96),
-                          'mipmap-xxhdpi': (144, 144),
-                          'mipmap-xxxhdpi': (192, 192)
-                      }
-                  return sizes.get(parent_dir, (96, 96))
-              elif 'splash' in filename:
-                  sizes = {
-                      'drawable': (2732, 2732),
-                      'drawable-land-mdpi': (480, 320),
-                      'drawable-land-hdpi': (800, 480),
-                      'drawable-land-xhdpi': (1280, 720),
-                      'drawable-land-xxhdpi': (1600, 960),
-                      'drawable-land-xxxhdpi': (1920, 1280),
-                      'drawable-port-mdpi': (320, 480),
-                      'drawable-port-hdpi': (480, 800),
-                      'drawable-port-xhdpi': (720, 1280),
-                      'drawable-port-xxhdpi': (960, 1600),
-                      'drawable-port-xxxhdpi': (1280, 1920)
-                  }
-                  return sizes.get(parent_dir, (1024, 1024))
-              return (512, 512)
-
-          res_path = 'android/app/src/main/res'
-          repaired = 0
-          for root, dirs, files in os.walk(res_path):
-              for f in files:
-                  if f.endswith('.png'):
-                      path = os.path.join(root, f)
-                      is_corrupt = True
-                      if os.path.exists(path) and os.path.getsize(path) > 0:
-                          try:
-                              with open(path, 'rb') as fp:
-                                  head = fp.read(8)
-                                  if head.startswith(b'\x89PNG\r\n\x1a\n'):
-                                      is_corrupt = False
-                          except Exception:
-                              pass
-                      if is_corrupt:
-                          w, h = get_dimensions(path)
-                          print(f'Repairing corrupted PNG: {path} ({w}x{h})...')
-                          create_valid_png(w, h, path)
-                          repaired += 1
-          print(f'Pruned and repaired {repaired} corrupted PNGs!')
-          "
-
-      - name: Generate High-Fidelity Launcher Icons from SVG
-        run: node assets/generate_png_icons.js
+          sha256sum android/gradle/wrapper/gradle-wrapper.jar
+          unzip -tq android/gradle/wrapper/gradle-wrapper.jar && echo "ZIP OK" || (echo "ZIP CORRUPT - cap sync overwrote it, investigate" && exit 1)
 
       - name: Build Android APKs (Debug & Release)
         run: |
@@ -204,8 +120,35 @@ jobs:
           ./gradlew assembleDebug
           ./gradlew assembleRelease
 
+      - name: Import GPG key for signed release tags
+        if: github.ref_type == 'tag' || github.event_name == 'workflow_dispatch'
+        uses: crazy-max/ghaction-import-gpg@v6
+        with:
+          gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
+          git_user_signingkey: true
+          git_commit_gpgsign: true
+          git_tag_gpgsign: true
+          git_config_global: true
+
+      - name: Configure git identity for signed tag
+        if: github.ref_type == 'tag' || github.event_name == 'workflow_dispatch'
+        run: |
+          git config --global user.name "${{ secrets.GIT_USER_NAME }}"
+          git config --global user.email "${{ secrets.GIT_USER_EMAIL }}"
+
+      - name: Create signed tag (only if not already tagged)
+        if: github.ref_type == 'tag' || github.event_name == 'workflow_dispatch'
+        run: |
+          VERSION="${{ steps.get_version.outputs.version }}"
+          if git rev-parse "$VERSION" >/dev/null 2>&1 && [ "${{ github.ref_type }}" = "tag" ]; then
+            echo "Tag $VERSION already exists from the push event, re-signing it"
+            git tag -d "$VERSION"
+          fi
+          git tag -s "$VERSION" -m "Release $VERSION"
+          git push origin "$VERSION" --force
+
       - name: Create GitHub Release and Upload APKs
-        if: github.ref_type == 'tag' || github.event_name == 'workflow_dispatch' || github.ref_name == 'main'
+        if: github.ref_type == 'tag' || github.event_name == 'workflow_dispatch'
         id: create_release
         uses: softprops/action-gh-release@v2
         env:
@@ -220,14 +163,15 @@ jobs:
             - **[app-debug.apk](https://github.com/${{ github.repository }}/releases/download/${{ steps.get_version.outputs.version }}/app-debug.apk)**: Instantly installable debug version for testing.
             - **[app-release-unsigned.apk](https://github.com/${{ github.repository }}/releases/download/${{ steps.get_version.outputs.version }}/app-release-unsigned.apk)**: Unsigned production release package (requires signing before Play Store upload).
           draft: false
-          prerelease: ${{ github.ref_type != 'tag' && github.event_name != 'workflow_dispatch' }}
+          prerelease: false
           generate_release_notes: true
           files: |
             android/app/build/outputs/apk/debug/app-debug.apk
             android/app/build/outputs/apk/release/app-release-unsigned.apk
 
+      # Dev builds (plain pushes to main): only upload as workflow artifacts, and only if the build actually succeeded.
       - name: Upload APKs as build artifacts (dev builds)
-        if: always()
+        if: success() && github.ref_type != 'tag' && github.event_name != 'workflow_dispatch'
         uses: actions/upload-artifact@v4
         with:
           name: apks-${{ steps.get_version.outputs.version }}
