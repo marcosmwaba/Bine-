@@ -131,7 +131,13 @@ export default function App() {
       const res = await fetch('https://api.github.com/repos/marcosmwaba/Bine-/releases');
       
       if (res.status === 404) {
-        throw new Error('No releases found (404)');
+        // No releases found on GitHub - treat as up-to-date (no updates found)
+        setLatestVersion(appVersion);
+        setApkDownloadUrl(null);
+        localStorage.setItem('bine_update_check_result', JSON.stringify({ version: appVersion, url: null }));
+        localStorage.setItem('bine_update_check_time', Date.now().toString());
+        hasCheckedThisSession = true;
+        return;
       }
       
       if (res.status === 403) {
@@ -150,13 +156,25 @@ export default function App() {
 
       const releases = await res.json();
       if (!Array.isArray(releases) || releases.length === 0) {
-        throw new Error('No releases found on GitHub');
+        // No releases found - treat as up-to-date (no updates found)
+        setLatestVersion(appVersion);
+        setApkDownloadUrl(null);
+        localStorage.setItem('bine_update_check_result', JSON.stringify({ version: appVersion, url: null }));
+        localStorage.setItem('bine_update_check_time', Date.now().toString());
+        hasCheckedThisSession = true;
+        return;
       }
 
       // Filter out draft releases. Non-drafts are sorted chronologically by GitHub (newest first)
       const latestRelease = releases.find((r: any) => !r.draft);
       if (!latestRelease || !latestRelease.tag_name) {
-        throw new Error('No valid release found on GitHub');
+        // No stable/non-draft release found - treat as up-to-date (no updates found)
+        setLatestVersion(appVersion);
+        setApkDownloadUrl(null);
+        localStorage.setItem('bine_update_check_result', JSON.stringify({ version: appVersion, url: null }));
+        localStorage.setItem('bine_update_check_time', Date.now().toString());
+        hasCheckedThisSession = true;
+        return;
       }
 
       const tag = latestRelease.tag_name;
@@ -171,7 +189,13 @@ export default function App() {
       }
 
       if (!apkUrl) {
-        throw new Error(`No APK file asset found in release ${tag}`);
+        // No APK file asset found - treat as up-to-date (no updates found)
+        setLatestVersion(appVersion);
+        setApkDownloadUrl(null);
+        localStorage.setItem('bine_update_check_result', JSON.stringify({ version: appVersion, url: null }));
+        localStorage.setItem('bine_update_check_time', Date.now().toString());
+        hasCheckedThisSession = true;
+        return;
       }
 
       setLatestVersion(tag);
@@ -699,7 +723,7 @@ export default function App() {
                         <div className="flex items-center justify-between px-3 py-2 text-[10px] text-gray-400">
                           <div className="flex items-center gap-1.5">
                             <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                            <span className="font-sans font-bold">App is up to date</span>
+                            <span className="font-sans font-bold">No updates found</span>
                           </div>
                           <button 
                             onClick={() => checkGitHubUpdates(true)}
