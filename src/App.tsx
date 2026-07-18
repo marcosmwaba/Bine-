@@ -61,16 +61,12 @@ export default function App() {
   // Connect state and controllers via the ViewModel
   const vm = useBineViewModel();
 
-  // Auto update system states
-  const [appVersion, setAppVersion] = useState<string>(() => {
-    return localStorage.getItem('bine_app_version') || 'v1.0.0';
-  });
+  // Auto update system states (Fixed to build package.json v1.0.23 release version)
+  const [appVersion] = useState<string>('v1.0.23');
   const [latestVersion, setLatestVersion] = useState<string | null>(null);
   const [isCheckingUpdate, setIsCheckingUpdate] = useState<boolean>(false);
   const [updateError, setUpdateError] = useState<string | null>(null);
-  const [isUpdating, setIsUpdating] = useState<boolean>(false);
-  const [updateProgress, setUpdateProgress] = useState<number>(0);
-  const [updateStage, setUpdateStage] = useState<string>('');
+  const [showUpdateDialog, setShowUpdateDialog] = useState<boolean>(false);
 
   const checkGitHubUpdates = async () => {
     setIsCheckingUpdate(true);
@@ -87,10 +83,10 @@ export default function App() {
       }
       throw new Error('Release info not found or API rate limit reached');
     } catch (err: any) {
-      console.warn("GitHub release check failed, using simulated fallback for high fidelity simulation:", err.message);
-      // Simulate that there is a v1.0.2 update available from Github so the user can test the actual flow!
+      console.warn("GitHub release check failed, using simulated fallback for demo:", err.message);
+      // Simulate that there is a v1.0.24 update available from Github so the user can test the flow!
       setTimeout(() => {
-        setLatestVersion('v1.0.2');
+        setLatestVersion('v1.0.24');
       }, 800);
     } finally {
       setIsCheckingUpdate(false);
@@ -106,62 +102,8 @@ export default function App() {
 
   const handleApplyUpdate = () => {
     if (!latestVersion) return;
-    setIsUpdating(true);
-    setUpdateProgress(0);
-
-    const downloadUrl = `https://github.com/marcosmwaba/Bine-/releases/download/${latestVersion}/app-debug.apk`;
-    setUpdateStage(`Curling release package: ${latestVersion} ...`);
-
-    // Trigger non-blocking asynchronous background download of the APK package directly from GitHub Releases!
-    try {
-      const link = document.createElement('a');
-      link.href = downloadUrl;
-      link.target = '_blank';
-      link.download = `app-debug-${latestVersion}.apk`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    } catch (e) {
-      console.error("Failed to trigger download automatically:", e);
-    }
-
-    const stages = [
-      { progress: 15, text: `Curling latest release bundle asynchronously from repo...` },
-      { progress: 40, text: `Downloading app-debug.apk package directly in background...` },
-      { progress: 65, text: `Caching update state & registering version metadata...` },
-      { progress: 85, text: `Synchronizing offline database schemas...` },
-      { progress: 100, text: `Update finalized! version set to ${latestVersion}.` }
-    ];
-
-    let currentStageIndex = 0;
-    const interval = setInterval(() => {
-      setUpdateProgress(prev => {
-        const nextProgress = prev + 5;
-        const currentStage = stages[currentStageIndex];
-        
-        if (currentStage && nextProgress >= currentStage.progress) {
-          setUpdateStage(currentStage.text);
-          currentStageIndex++;
-        }
-
-        if (nextProgress >= 100) {
-          clearInterval(interval);
-          setTimeout(() => {
-            localStorage.setItem('bine_app_version', latestVersion);
-            setAppVersion(latestVersion);
-            setIsUpdating(false);
-            setLatestVersion(null);
-            setShowSidebar(false);
-            setSuccessToast(`Successfully updated to ${latestVersion}! Check your downloads for the installable APK.`);
-            setTimeout(() => {
-              window.location.reload();
-            }, 2500);
-          }, 800);
-          return 100;
-        }
-        return nextProgress;
-      });
-    }, 150);
+    setShowSidebar(false);
+    setShowUpdateDialog(true);
   };
 
   const unreadCount = vm.notifications.filter(n => !n.read).length;
@@ -658,6 +600,7 @@ export default function App() {
                         <div className="text-left">
                           <p className="font-sans font-bold text-xs text-gray-800 leading-none">SMS Scraper</p>
                           <p className="text-[9px] text-gray-400 mt-1 font-medium">MTN/Airtel SMS sync</p>
+                          <p className="text-[9px] text-gray-400 mt-1 font-small">not yet supported</p>
                         </div>
                       </div>
                       <label className="relative inline-flex items-center cursor-pointer select-none">
@@ -892,7 +835,7 @@ export default function App() {
                   </div>
                   
                   <div className="bg-gray-105 rounded-full px-3.5 py-1 mb-6 border border-gray-200 shrink-0">
-                    <span className="font-mono text-[10px] font-bold text-gray-600">v1.0.0 (Stable Release)</span>
+                    <span className="font-mono text-[10px] font-bold text-gray-600">{appVersion} (Stable Release)</span>
                   </div>
                   
                   <div className="space-y-4 max-w-[290px] text-center">
@@ -973,48 +916,89 @@ export default function App() {
 
         {/* Success Copy Toast Overlay */}
         <AnimatePresence>
-          {isUpdating && (
+          {showUpdateDialog && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="absolute inset-0 bg-gray-900/95 backdrop-blur-md z-[200] flex flex-col items-center justify-center p-6 text-white text-center"
+              className="absolute inset-0 bg-gray-950/70 backdrop-blur-xs z-[200] flex items-center justify-center p-4 text-left"
             >
-              {/* Spinner/Orb logo */}
-              <div className="relative mb-6">
-                <div className="w-16 h-16 rounded-full border-4 border-orange-500/20 border-t-orange-500 animate-spin" />
-                <CloudDownload className="w-6 h-6 text-orange-400 absolute inset-0 m-auto animate-bounce" />
-              </div>
-
-              <div className="space-y-1.5 max-w-[280px]">
-                <h3 className="font-sans font-extrabold text-base tracking-tight text-white">Updating Bine Shop...</h3>
-                <p className="text-orange-400 font-sans font-extrabold text-xs tracking-wider uppercase">
-                  Version {latestVersion}
-                </p>
-                <div className="h-6 flex items-center justify-center">
-                  <p className="text-[10px] text-gray-400 font-mono italic leading-normal animate-pulse">
-                    {updateStage}
-                  </p>
+              <motion.div
+                initial={{ scale: 0.95, y: 20 }}
+                animate={{ scale: 1, y: 0 }}
+                exit={{ scale: 0.95, y: 20 }}
+                className="bg-white rounded-3xl shadow-2xl p-6 w-full max-w-[320px] border border-orange-100 flex flex-col gap-4 text-left"
+              >
+                {/* Header with icon */}
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-orange-50 text-orange-600 rounded-2xl shrink-0">
+                    <CloudDownload className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-sans font-black text-sm text-gray-950 leading-tight">
+                      Update Security Protocol
+                    </h3>
+                    <p className="text-[10px] text-orange-600 font-extrabold font-mono tracking-wide uppercase mt-0.5">
+                      New Release Available
+                    </p>
+                  </div>
                 </div>
-              </div>
 
-              {/* Progress bar */}
-              <div className="w-full max-w-[240px] mt-6 bg-gray-800 h-2 rounded-full overflow-hidden border border-gray-700/50">
-                <motion.div 
-                  className="bg-gradient-to-r from-orange-500 to-amber-400 h-full rounded-full"
-                  initial={{ width: 0 }}
-                  animate={{ width: `${updateProgress}%` }}
-                  transition={{ duration: 0.1 }}
-                />
-              </div>
+                {/* Info details */}
+                <div className="space-y-3 text-xs leading-relaxed text-gray-600">
+                  <div className="bg-orange-50/40 border border-orange-100/50 rounded-2xl p-3 text-[10px] text-orange-800 leading-relaxed font-medium">
+                    <span className="font-extrabold block mb-1">🔒 No Over-The-Air (OTA) Updates</span>
+                    To safeguard your offline sales ledger and protect local customer transaction data from dynamic remote execution or corruption, Bine does not support silent background over-the-air auto-updates.
+                  </div>
 
-              <div className="mt-2 font-mono text-[11px] font-bold text-gray-400">
-                {updateProgress}% Complete
-              </div>
+                  <p className="text-gray-500 font-sans text-[11px] leading-relaxed">
+                    Updates must be installed securely via the official Android Package (APK). Installing the update over your current version will safely preserve all of your existing products, sales, and debt records.
+                  </p>
 
-              <p className="text-[9px] text-gray-500 max-w-[200px] mt-8 leading-relaxed font-semibold">
-                Please do not close the application or lock your screen. Upgrading database schemas and caching bundle.
-              </p>
+                  <div className="border-t border-gray-100 pt-2.5">
+                    <div className="flex justify-between items-center text-[10px] font-bold text-gray-400">
+                      <span>YOUR CURRENT VERSION</span>
+                      <span className="font-mono bg-gray-100 text-gray-600 px-2 py-0.5 rounded font-extrabold">{appVersion}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-[10px] font-bold text-orange-600 mt-1.5">
+                      <span>LATEST RELEASE AVAILABLE</span>
+                      <span className="font-mono bg-orange-50 px-2 py-0.5 rounded font-extrabold">{latestVersion}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div className="flex flex-col gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const downloadUrl = `https://github.com/marcosmwaba/Bine-/releases/download/${latestVersion}/app-debug.apk`;
+                      window.open(downloadUrl, '_blank');
+                    }}
+                    className="w-full py-2.5 bg-[#0f5132] hover:bg-[#0c4027] active:scale-98 text-white rounded-xl font-sans font-extrabold text-xs transition-all shadow-md flex items-center justify-center gap-1.5 cursor-pointer text-center"
+                  >
+                    <CloudDownload className="w-4 h-4" />
+                    Download APK (app-debug.apk)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const releaseUrl = `https://github.com/marcosmwaba/Bine-/releases/tag/${latestVersion}`;
+                      window.open(releaseUrl, '_blank');
+                    }}
+                    className="w-full py-2 bg-gray-100 hover:bg-gray-200 active:scale-98 text-gray-700 rounded-xl font-sans font-bold text-[11px] transition-all flex items-center justify-center gap-1 cursor-pointer text-center"
+                  >
+                    View Release Notes
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowUpdateDialog(false)}
+                    className="w-full py-2 text-center text-gray-400 hover:text-gray-600 font-sans font-bold text-[10px] cursor-pointer"
+                  >
+                    Dismiss
+                  </button>
+                </div>
+              </motion.div>
             </motion.div>
           )}
 
