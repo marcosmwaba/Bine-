@@ -194,6 +194,9 @@ jobs:
           print(f'Pruned and repaired {repaired} corrupted PNGs!')
           "
 
+      - name: Generate High-Fidelity Launcher Icons from SVG
+        run: node assets/generate_png_icons.js
+
       - name: Build Android APKs (Debug & Release)
         run: |
           cd android
