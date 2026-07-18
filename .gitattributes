@@ -1,4 +1,5 @@
 # Ensure binary files are not modified by Git's line ending normalization
+# Trigger update for git attributes tracking
 *.jar binary
 *.png binary
 *.jpg binary
