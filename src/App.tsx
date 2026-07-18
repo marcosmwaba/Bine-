@@ -128,10 +128,10 @@ export default function App() {
     setApkDownloadUrl(null);
 
     try {
-      const res = await fetch('https://api.github.com/repos/marcosmwaba/Bine-/releases/latest');
+      const res = await fetch('https://api.github.com/repos/marcosmwaba/Bine-/releases');
       
       if (res.status === 404) {
-        throw new Error('No stable release found (404)');
+        throw new Error('No releases found (404)');
       }
       
       if (res.status === 403) {
@@ -148,17 +148,23 @@ export default function App() {
         throw new Error(`GitHub API Error: ${res.statusText} (${res.status})`);
       }
 
-      const data = await res.json();
-      if (!data || !data.tag_name) {
-        throw new Error('Invalid release payload received from GitHub');
+      const releases = await res.json();
+      if (!Array.isArray(releases) || releases.length === 0) {
+        throw new Error('No releases found on GitHub');
       }
 
-      const tag = data.tag_name;
+      // Filter out draft releases. Non-drafts are sorted chronologically by GitHub (newest first)
+      const latestRelease = releases.find((r: any) => !r.draft);
+      if (!latestRelease || !latestRelease.tag_name) {
+        throw new Error('No valid release found on GitHub');
+      }
+
+      const tag = latestRelease.tag_name;
       
       // Find APK asset
       let apkUrl: string | null = null;
-      if (data.assets && Array.isArray(data.assets)) {
-        const apkAsset = data.assets.find((asset: any) => asset.name && asset.name.endsWith('.apk'));
+      if (latestRelease.assets && Array.isArray(latestRelease.assets)) {
+        const apkAsset = latestRelease.assets.find((asset: any) => asset.name && asset.name.endsWith('.apk'));
         if (apkAsset) {
           apkUrl = apkAsset.browser_download_url;
         }
