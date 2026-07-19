@@ -615,37 +615,17 @@ export function useBineViewModel() {
 
   // --- 4. Analytics Calculations ---
   const getTotalNetProfit = (): number => {
-    // If mock sales are present, show the seed profit base. Otherwise start from 0.00.
-    const hasSeedSales = sales.some(s => s.id === 's1' || s.id === 's2' || s.id === 's3' || s.id === 's4');
-    const seedProfit = hasSeedSales ? 14250.00 : 0.00;
-    const newSales = hasSeedSales 
-      ? sales.filter(s => !s.id.startsWith('s1') && !s.id.startsWith('s2') && !s.id.startsWith('s3') && !s.id.startsWith('s4'))
-      : sales;
-    const extraProfit = newSales.reduce((acc, s) => acc + s.totalProfit, 0);
+    const extraProfit = sales.reduce((acc, s) => acc + s.totalProfit, 0);
     const totalExpenses = expenses.reduce((acc, e) => acc + e.amount, 0);
-    return seedProfit + extraProfit - totalExpenses;
+    return extraProfit - totalExpenses;
   };
 
   const getGrossSales = (): number => {
-    // If mock sales are present, show the seed gross base. Otherwise start from 0.00.
-    const hasSeedSales = sales.some(s => s.id === 's1' || s.id === 's2' || s.id === 's3' || s.id === 's4');
-    const seedGross = hasSeedSales ? 32410.00 : 0.00;
-    const newSales = hasSeedSales
-      ? sales.filter(s => !s.id.startsWith('s1') && !s.id.startsWith('s2') && !s.id.startsWith('s3') && !s.id.startsWith('s4'))
-      : sales;
-    const extraGross = newSales.reduce((acc, s) => acc + s.totalAmount, 0);
-    const totalExpenses = expenses.reduce((acc, e) => acc + e.amount, 0);
-    return seedGross + extraGross - totalExpenses;
+    return sales.reduce((acc, s) => acc + s.totalAmount, 0);
   };
 
   const getTotalTransactionsCount = (): number => {
-    // If mock sales are present, show the seed transactions count. Otherwise start from 0.
-    const hasSeedSales = sales.some(s => s.id === 's1' || s.id === 's2' || s.id === 's3' || s.id === 's4');
-    const seedCount = hasSeedSales ? 1042 : 0;
-    const newSalesCount = hasSeedSales
-      ? sales.filter(s => !s.id.startsWith('s1') && !s.id.startsWith('s2') && !s.id.startsWith('s3') && !s.id.startsWith('s4')).length
-      : sales.length;
-    return seedCount + newSalesCount;
+    return sales.length;
   };
 
   const clearLedgerData = () => {
