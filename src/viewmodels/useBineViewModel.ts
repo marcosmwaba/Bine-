@@ -33,7 +33,7 @@ export function useBineViewModel() {
     let initialDebtors = repository.getDebtors();
     let initialSales = repository.getSales();
 
-    // Clean up residual mock data from localStorage
+    // Clean up residual mock data and fake repayment sales from localStorage
     const mockProductIds = ['p1', 'p2', 'p3', 'p4', 'p5', 'p6', 'p7', 'p8', 'p9'];
     const mockDebtorIds = ['d1', 'd2', 'd3', 'd4', 'd5', 'd6', 'd7', 'd8', 'd9', 'd10', 'd11', 'd12', 'd13', 'd14'];
     const mockSaleIds = ['s1', 's2', 's3', 's4'];
@@ -41,11 +41,16 @@ export function useBineViewModel() {
     const hasMockProducts = initialProducts.some(p => mockProductIds.includes(p.id));
     const hasMockDebtors = initialDebtors.some(d => mockDebtorIds.includes(d.id));
     const hasMockSales = initialSales.some(s => mockSaleIds.includes(s.id));
+    const hasFakeRepaymentSales = initialSales.some(s => s.id.startsWith('s_rep_') || s.items.some(i => i.productId === 'repayment'));
 
-    if (hasMockProducts || hasMockDebtors || hasMockSales) {
+    if (hasMockProducts || hasMockDebtors || hasMockSales || hasFakeRepaymentSales) {
       initialProducts = initialProducts.filter(p => !mockProductIds.includes(p.id));
       initialDebtors = initialDebtors.filter(d => !mockDebtorIds.includes(d.id));
-      initialSales = initialSales.filter(s => !mockSaleIds.includes(s.id));
+      initialSales = initialSales.filter(s => 
+        !mockSaleIds.includes(s.id) && 
+        !s.id.startsWith('s_rep_') && 
+        !s.items.some(i => i.productId === 'repayment')
+      );
 
       repository.saveProducts(initialProducts);
       repository.saveDebtors(initialDebtors);
@@ -523,25 +528,6 @@ export function useBineViewModel() {
     });
 
     updateDebtorsState(updatedDebtors);
-
-    // Also record as a transaction in general sales log
-    const repaymentSale: Sale = {
-      id: `s_rep_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
-      invoiceNumber: generateInvoiceNumber(),
-      items: [{
-        productId: 'repayment',
-        productName: `Nkongole Repayment (${debtor.name})`,
-        quantity: 1,
-        sellingPrice: amount,
-        costPrice: 0 // Debt repayments have 100% margin relative to current flow
-      }],
-      totalAmount: amount,
-      totalProfit: amount,
-      date: getFormattedDate(),
-      time: getFormattedTime(),
-      paymentMethod: paymentMethod as any
-    };
-    updateSalesState([repaymentSale, ...sales]);
 
     addNotification(
       'Nkongole Repayment',
