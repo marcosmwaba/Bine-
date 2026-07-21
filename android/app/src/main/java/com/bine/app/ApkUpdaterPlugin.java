@@ -31,7 +31,7 @@ public class ApkUpdaterPlugin extends Plugin {
         }
 
         // Run download and install on a background thread
-        Thread thread = new Thread(new Runnable() {
+        getBridge().executeOnExecutor(new Runnable() {
             @Override
             public void run() {
                 try {
@@ -98,6 +98,5 @@ public class ApkUpdaterPlugin extends Plugin {
                 }
             }
         });
-        thread.start();
     }
 }

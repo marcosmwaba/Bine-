@@ -1,79 +1,97 @@
+<p align="center">
+  <img src="assets/banner.png" alt="Bine Logo Banner" width="100%" />
+</p>
+
 # Bine - Smart Retail & POS Manager
 
-Bine is a high-performance, mobile-optimized point-of-sale (POS), inventory management, and customer ledger application. Designed for speed and visual clarity, Bine empowers retailers to manage sales, track inventory levels, monitor outstanding debts, and review detailed financial logs seamlessly.
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+[![Platform](https://img.shields.io/badge/Platform-Android%20%7C%20Web-brightgreen.svg)](#)
+[![Release](https://img.shields.io/badge/Release-Pre--built%20APK%20Available-orange.svg)](#-downloads--pre-built-apks)
+
+**Bine** is a modern, open-source Point of Sale (POS), inventory control, and debt ledger management application built specifically for small-to-medium retail businesses, local shops, and independent merchants. 
+
+Designed to replace paper sales books and complex enterprise software, Bine provides an intuitive, high-speed interface optimized for touchscreens and mobile devices.
 
 ---
 
-## 🚀 Key Features
+## 🎯 Intended Purpose & Problem Solved
 
-- **Live Inventory Integration**: The retail sales catalog and POS shopping cart are fully integrated. Cart additions are checked against actual stock levels in real time.
-- **Dynamic Cart Controls**: Easily increment, decrement, and remove items directly from the horizontal POS quick-access strip or catalog grid, with automated blockages when reaching maximum stock.
-- **Ledger & Debt Management**: Monitor client balances, track payment schedules, and keep historical records of outstanding retail balances.
-- **Comprehensive History & Analytics**: Log every transaction with precise breakdown details for both cash and debt-based purchases.
-- **Adaptive Dark Mode Theme**: An eye-safe, high-contrast dark palette tailored for night shifts and low-light environments, mapped flawlessly across all screens.
-- **Capacitor Android Architecture**: Fully containerized and optimized to run as a native Android app, ready for production compile.
+Small retail businesses frequently face operational challenges such as unrecorded credit sales, stockouts, tedious manual math, and untracked shop expenses. **Bine** solves these challenges by offering:
 
----
-
-## 📱 Android Compilation Guide
-
-Bine uses **Capacitor** to wrap the modern React/Vite front-end into a native Android workspace.
-
-### Prerequisites
-Make sure you have [Node.js](https://nodejs.org/), the [Android SDK](https://developer.android.com/studio), and [Gradle](https://gradle.org/) installed.
-
-### Build and Sync
-To compile the web assets and synchronize them into the native Android folder:
-
-```bash
-# 1. Build the production React web bundle
-npm run build
-
-# 2. Synchronize assets into the Android native template
-npm run android:sync
-```
-
-### Run and Debug
-To open the project inside **Android Studio** for emulation, code signing, and local debugging:
-
-```bash
-npm run android:open
-```
+- **Speed at Checkout**: Process cash, mobile money, and credit transactions in seconds.
+- **Accurate Credit Tracking**: Eliminate lost revenue from informal customer loans (*Nkongole*) with structured debt profiles.
+- **Real-Time Stock Intelligence**: Automatically deduct inventory upon sale and notify shopkeepers of low stock.
+- **True Business Health Insights**: Measure actual net profit by factoring in operational expenses alongside gross sales.
+- **Offline Reliability**: Operate seamlessly without internet dependencies, storing data securely on the device.
 
 ---
 
-## 🛠️ GitHub Actions Release Workflow
+## 🛠️ Core Application Modules
 
-We have integrated an automated CI/CD pipeline inside `.github/workflows/android-release.yml`.
+### 🛒 1. Point of Sale & Checkout Register
+- **Instant Product Search & Barcode Scanning**: Find items by name, category, or camera/hardware barcode scanner.
+- **Dynamic Cart Management**: Real-time total calculation with automatic stock limit warnings to prevent overselling.
+- **Flexible Payment Methods**: Support for Cash, Airtel Money, MTN Mobile Money, Bank Transfer, and Credit (Debt).
+- **Digital Invoicing & Receipts**: Generate formatted receipts with printable options and digital sharing.
 
-### How It Works:
-1. **Trigger**: The workflow triggers automatically whenever a new version tag starting with `v` (e.g., `v1.0.0`) is pushed to your repository.
-2. **Execution**:
-   - Checks out the code and sets up the Node.js build cache.
-   - Restores dependencies and builds the production web distribution bundle.
-   - Installs JDK 17, loads the Android SDK, and syncs the native Capacitor files.
-   - Runs Gradle to assemble both **Debug** (`app-debug.apk`) and **Release** (`app-release-unsigned.apk`) packages.
-3. **Draft Release**: Generates a GitHub Release tagged with your version number and attaches the compile-ready Android APKs directly to the release page.
+### 📦 2. Inventory & Stock Control
+- **Catalog Management**: Add, update, or remove products with images, cost prices, selling prices, and SKUs/barcodes.
+- **Margin Calculations**: Automatically view profit margins per item during inventory setup.
+- **Stock Alert Indicators**: Color-coded badges for **In Stock**, **Low Stock**, and **Out of Stock** items.
+- **Restocking Operations**: Quickly adjust quantities as new stock arrives.
 
-### To Release a New Version:
-```bash
-git tag v1.0.0
-git push origin v1.0.0
-```
+### 📒 3. Customer Debt Ledger (*Nkongole*)
+- **Debtor Profiles**: Maintain customer profiles with phone numbers and current outstanding debt balances.
+- **Credit Sales Direct-to-Ledger**: Easily charge sales to a debtor's account directly from the checkout screen.
+- **Repayment Tracking**: Record full or partial repayments with instant balance updates and clear transaction histories.
+- **Settlement & History**: Keep historical logs of settled debts and customer repayment patterns.
+
+### 📊 4. Financial Analytics & Reporting
+- **Performance Overview**: Track Gross Sales, Net Profit, Total Transactions, and Active Debt Totals at a glance.
+- **Expense Tracking**: Log store expenses (rent, electricity, supplier freight, worker wages) to determine true net margins.
+- **Time-based Filtering**: Analyze business performance by Day, Week, Month, or Custom Date ranges.
+- **Product Insights**: Identify top-performing products and sales volume breakdown.
+
+---
+
+## 📱 Downloads & Pre-built APKs
+
+Pre-compiled Android application packages (**APKs**) are available directly on the GitHub Releases page. You do not need to set up local build tools or compile the native source code manually.
+
+- **[Latest Releases & Pre-built APKs](../../releases)**
+  - `app-release.apk` (Production Release)
+  - `app-debug.apk` (Development & Testing)
+
+---
+
+## 📸 Screenshots
+
+> *Screenshots coming soon.*
 
 ---
 
 ## 📂 Project Structure
 
 ```text
-├── .github/workflows/       # GitHub Actions automated release pipelines
-├── android/                 # Auto-generated native Android build studio project
+├── .github/workflows/       # Automated CI/CD release workflows
+├── android/                 # Native Android Capacitor workspace
+├── assets/                  # Banners, icons, and graphic assets
 ├── src/
-│   ├── components/          # Modularized dashboard tabs (Sales, Debt, History, Inventory, Settings)
-│   ├── viewmodels/          # Centralized React state management and business logic hook
-│   ├── types.ts             # Shared typescript definitions and models
-│   ├── index.css            # Tailwind custom theme variables and dark mode mappings
-│   └── main.tsx             # Application bootstrap entry
-├── capacitor.config.ts      # Native wrapper configuration properties
-└── package.json             # Core scripts and app package declarations
+│   ├── components/          # Dashboard views (POS, Debt, Ledger, Inventory, Stats, Settings)
+│   ├── viewmodels/          # Centralized React hooks and core business logic
+│   ├── types.ts             # Shared TypeScript models and interfaces
+│   ├── index.css            # Tailwind styling and theme configurations
+│   └── main.tsx             # Main application entry point
+├── capacitor.config.ts      # Capacitor native wrapper config
+└── package.json             # App dependencies and scripts
 ```
+
+---
+
+## 📜 License
+
+This project is open-source software distributed under the terms of the **[GNU General Public License v3.0 (GPLv3)](https://www.gnu.org/licenses/gpl-3.0)**.
+
+You are free to run, modify, and redistribute this software under the terms of the GPLv3 license.
+
+
