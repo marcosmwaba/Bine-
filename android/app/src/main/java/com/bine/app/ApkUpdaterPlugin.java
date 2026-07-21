@@ -31,7 +31,7 @@ public class ApkUpdaterPlugin extends Plugin {
         }
 
         // Run download and install on a background thread
-        new Thread(new Runnable() {
+        Thread thread = new Thread(new Runnable() {
             @Override
             public void run() {
                 try {
