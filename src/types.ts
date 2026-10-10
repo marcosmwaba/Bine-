@@ -77,3 +77,32 @@ export interface AppNotification {
   read: boolean;
 }
 
+export interface StoreFinancialSummary {
+  totalRevenue: number;
+  totalProfit: number;
+  totalDebtOutstanding: number;
+  totalExpenses: number;
+  inventoryValuationCost: number;
+  inventoryValuationRetail: number;
+  lowStockCount: number;
+  totalTransactionsCount: number;
+  totalProductsCount: number;
+  totalDebtorsCount: number;
+}
+
+export interface PublishSnapshot {
+  storeId: string;
+  businessName: string;
+  currency: string;
+  publishedAt: string;
+  publishedBy: string;
+  summary: StoreFinancialSummary;
+  products: Product[];
+  sales: Sale[];
+  debtors: Debtor[];
+  expenses: Expense[];
+  settings: Settings;
+  version?: number;
+  uninitialized?: boolean;
+}
+

@@ -49,7 +49,9 @@ import CalculatorTab from './components/CalculatorTab';
 import StatsTab from './components/StatsTab';
 import BineLogo from './components/BineLogo';
 import { SalesLedgerPanel, ExpensesLedgerPanel } from './components/LedgerPanels';
-import { Receipt } from 'lucide-react';
+import { Receipt, UploadCloud, LayoutDashboard } from 'lucide-react';
+import { WebDashboard } from './components/WebDashboard';
+import { PublishModal } from './components/PublishModal';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<string>('sales');
@@ -63,6 +65,40 @@ export default function App() {
   const [showClearConfirmation, setShowClearConfirmation] = useState<boolean>(false);
   const [confirmStep, setConfirmStep] = useState<number>(1);
   const [confirmInput, setConfirmInput] = useState<string>('');
+  
+  // Cloud Dashboard & Publish Sync States
+  const [showPublishModal, setShowPublishModal] = useState<boolean>(false);
+  const [isDashboardView, setIsDashboardView] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      return params.get('view') === 'dashboard';
+    }
+    return false;
+  });
+
+  // Listen to popstate or url changes for ?view=dashboard
+  useEffect(() => {
+    const handleUrlChange = () => {
+      const params = new URLSearchParams(window.location.search);
+      setIsDashboardView(params.get('view') === 'dashboard');
+    };
+    window.addEventListener('popstate', handleUrlChange);
+    return () => window.removeEventListener('popstate', handleUrlChange);
+  }, []);
+
+  const navigateToDashboard = () => {
+    setIsDashboardView(true);
+    const url = new URL(window.location.href);
+    url.searchParams.set('view', 'dashboard');
+    window.history.pushState({}, '', url.toString());
+  };
+
+  const navigateToPos = () => {
+    setIsDashboardView(false);
+    const url = new URL(window.location.href);
+    url.searchParams.delete('view');
+    window.history.pushState({}, '', url.toString());
+  };
   
   // Connect state and controllers via the ViewModel
   const vm = useBineViewModel();
@@ -131,6 +167,11 @@ export default function App() {
     { id: 'stats', label: 'Stats', icon: BarChart2 }
   ];
 
+  // If current view is the Executive Web Dashboard
+  if (isDashboardView) {
+    return <WebDashboard onBackToPos={navigateToPos} />;
+  }
+
   return (
     <div className={`min-h-screen bg-gray-100 flex items-center justify-center font-sans ${vm.settings.darkMode ? 'dark' : ''}`}>
       {/* Mobile Frame Container: behaves like a phone on large screens and full-screen on mobile */}
@@ -170,6 +211,8 @@ export default function App() {
                   onOpenNotifications={() => setShowNotifications(true)}
                   unreadNotificationsCount={unreadCount}
                   onOpenSidebar={() => setShowSidebar(true)}
+                  onOpenPublish={() => setShowPublishModal(true)}
+                  onOpenDashboard={navigateToDashboard}
                 />
               </motion.div>
             )}
@@ -455,7 +498,49 @@ export default function App() {
                   
                   {/* General Sections */}
                   <div className="space-y-1">
-                    <h3 className="px-3 font-sans text-[10px] font-extrabold text-gray-400 uppercase tracking-widest text-left">
+                    <h3 className="px-3 font-sans text-[10px] font-extrabold text-blue-600 uppercase tracking-widest text-left flex items-center justify-between">
+                      <span>Cloud & Remote Access</span>
+                      <span className="text-[9px] bg-blue-100 text-blue-700 px-1.5 py-0.2 rounded-md font-bold">API Sync</span>
+                    </h3>
+
+                    {/* Publish Data Button */}
+                    <button
+                      onClick={() => {
+                        setShowSidebar(false);
+                        setShowPublishModal(true);
+                      }}
+                      className="w-full flex items-center justify-between px-3 py-3 rounded-xl bg-blue-50/70 hover:bg-blue-100/70 border border-blue-200/60 active:scale-98 transition-all text-left group cursor-pointer shadow-2xs"
+                    >
+                      <div className="flex items-center gap-3 text-blue-900">
+                        <UploadCloud className="w-5 h-5 stroke-[2] text-blue-600" />
+                        <div>
+                          <span className="font-sans text-xs font-bold text-blue-900 block leading-tight">
+                            Publish to Cloud API
+                          </span>
+                          <span className="text-[10px] text-blue-600/80">Push live snapshot & get QR code</span>
+                        </div>
+                      </div>
+                      <ChevronRight className="w-4.5 h-4.5 text-blue-500 group-hover:translate-x-0.5 transition-all" />
+                    </button>
+
+                    {/* Remote Web Dashboard Button */}
+                    <button
+                      onClick={() => {
+                        setShowSidebar(false);
+                        navigateToDashboard();
+                      }}
+                      className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl hover:bg-gray-50 active:scale-98 transition-all text-left group cursor-pointer"
+                    >
+                      <div className="flex items-center gap-3 text-gray-700 group-hover:text-[#003820]">
+                        <LayoutDashboard className="w-5 h-5 stroke-[2] text-[#0f5132]" />
+                        <span className="font-sans text-xs font-bold text-gray-800 group-hover:text-[#003820]">
+                          Open Remote Web Dashboard
+                        </span>
+                      </div>
+                      <ChevronRight className="w-4.5 h-4.5 text-gray-400 group-hover:text-[#0f5132] transition-colors" />
+                    </button>
+
+                    <h3 className="px-3 pt-3 font-sans text-[10px] font-extrabold text-gray-400 uppercase tracking-widest text-left">
                       Ledger Management
                     </h3>
                     
@@ -1259,6 +1344,18 @@ export default function App() {
           onClose={() => setShowExpensesLedger(false)}
           expenses={vm.expenses}
           deleteExpense={vm.deleteExpense}
+        />
+
+        {/* Cloud Publish & Share Dashboard Modal */}
+        <PublishModal
+          isOpen={showPublishModal}
+          onClose={() => setShowPublishModal(false)}
+          products={vm.products}
+          debtors={vm.debtors}
+          sales={vm.sales}
+          expenses={vm.expenses}
+          settings={vm.settings}
+          onViewDashboard={navigateToDashboard}
         />
 
         {/* Android simulated bottom navigation bar pill handle (visible only on desktop mockup) */}

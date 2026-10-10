@@ -27,7 +27,9 @@ import {
   Shirt,
   Heart,
   Grid,
-  Receipt
+  Receipt,
+  UploadCloud,
+  LayoutDashboard
 } from 'lucide-react';
 import { Product, Debtor } from '../types';
 import { formatCurrency } from '../domain/entities';
@@ -56,6 +58,8 @@ interface SalesTabProps {
   onOpenNotifications?: () => void;
   unreadNotificationsCount?: number;
   onOpenSidebar?: () => void;
+  onOpenPublish?: () => void;
+  onOpenDashboard?: () => void;
 }
 
 export default function SalesTab({
@@ -79,7 +83,9 @@ export default function SalesTab({
   addNewDebtor,
   onOpenNotifications,
   unreadNotificationsCount = 0,
-  onOpenSidebar
+  onOpenSidebar,
+  onOpenPublish,
+  onOpenDashboard
 }: SalesTabProps) {
   const [activeTab, setActiveTab] = useState<'numpad' | 'catalog'>('numpad');
   const [showPaymentSheet, setShowPaymentSheet] = useState(false);
@@ -267,7 +273,17 @@ export default function SalesTab({
           <Menu className="w-6 h-6 text-[#003820] cursor-pointer hover:opacity-85 transition-opacity" onClick={onOpenSidebar} />
           <BineLogo className="h-7 w-auto" />
         </div>
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2">
+          {onOpenPublish && (
+            <button 
+              onClick={onOpenPublish}
+              className="p-1.5 hover:bg-blue-50 rounded-lg text-blue-700 bg-blue-50/80 transition-all cursor-pointer flex items-center gap-1 px-2 border border-blue-200 shadow-2xs"
+              title="Publish Data to Cloud API & Share Dashboard"
+            >
+              <UploadCloud className="w-3.5 h-3.5 text-blue-600" />
+              <span className="font-sans text-[10px] font-bold">Publish</span>
+            </button>
+          )}
           <button 
             onClick={() => setShowScannerModal(true)}
             className="p-1.5 hover:bg-gray-50 rounded-full text-[#0f5132] bg-[#0f5132]/5 hover:bg-[#0f5132]/10 transition-all relative cursor-pointer flex items-center gap-1 px-2.5 border border-[#0f5132]/20"
